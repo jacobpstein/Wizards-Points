@@ -25,7 +25,7 @@ year <- c(2000:2010, 2012:2019)
 
 # loops to get data
 get_urls <- function(year) {
-  url <- paste0("https://www.basketball-reference.com/friv/standings.fcgi?month=11&day=15&year=", year)
+  url <- paste0("https://www.basketball-reference.com/friv/standings.fcgi?month=11&day=18&year=", year)
 }
 
 urls <- get_urls(year)
