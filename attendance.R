@@ -28,7 +28,6 @@ dat_wiz <- dat_team %>% filter(nameTeam == "Washington Wizards")
 
 five38 <- read_csv("https://projects.fivethirtyeight.com/nba-model/nba_elo.csv")
 
-
 year <- c(2012:2022)
 month <- rep(c("october", "november", "december", "january", "february", "march", "april", "may"), 11)
 
@@ -163,6 +162,13 @@ merge_wiz3 <- merge_wiz2 %>% bind_cols(select(streaks, streak)) %>%
   mutate(month = month(date, label = T)
          , day = wday(date, label =T))
 
+
+
+# weather data
+weather_dat <- readr::read_csv("C:/Users/j.pattersonstein/Downloads/2894148.csv")
+
+merge_wiz4 <- merge_wiz3 %>% left_join(weather_dat, by = c("date" = "DATE")) %>% 
+  mutate(spread = home_pts-visitor_pts)
 
 # let's just look at attendance over time
 
@@ -300,6 +306,31 @@ merge_wiz3 %>%
        
   )
 
+# which games/teams had the most attendance
+merge_wiz3 %>% 
+  filter(season!=2021) %>% 
+  group_by(visitor_team_name, date) %>% 
+  summarize(max = max(attendance, na.rm=T)
+            , perct = max/20476
+            ) %>% 
+  arrange(desc(max)) %>% 
+  head(n = 50) %>% 
+  ungroup() %>% 
+  group_by(visitor_team_name) %>% 
+    count() %>% 
+  arrange(desc(n)) %>% 
+  print(n=20)
+
+# bottom
+merge_wiz3 %>% 
+  filter(season!=2021) %>% 
+  group_by(visitor_team_name, date) %>% 
+  summarize(max = max(attendance, na.rm=T)
+            , perct = max/20476
+  ) %>% 
+  arrange(desc(max)) %>% 
+  tail(n = 50) %>% print(n=50)
+
 
 
 cors <- cor(merge_wiz3[ , purrr::map_lgl(merge_wiz3, is.numeric)] # just keep the numeric variables
@@ -313,6 +344,9 @@ m1 <- lm(log_att ~
          + quality
          + lag(log_att)
          + lag(log_att, 2)
+         + PRCP
+         + TMAX
+         + lag(spread)
          # + streak
          # + plusminusTeam
          # + lag(plusminusTeam)
@@ -327,7 +361,7 @@ m1 <- lm(log_att ~
          + month
          + day
          + factor(season)*slugOpponent
-         , data = merge_wiz3)
+         , data = merge_wiz4)
 
 
 summary(m1)
