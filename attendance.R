@@ -193,7 +193,8 @@ merge_wiz %>%
   facet_grid(~season, scales = "free_x", space = "free_x") +
   theme_minimal() +
   theme(panel.spacing = unit(0, 'lines')
-        , axis.text.x=element_text(angle=60, hjust=1)) +
+       # , axis.text.x=element_text(angle=60, hjust=1)
+       ) +
   labs(x = "", y = "Attendance"
        , title = "Attendance by Season"
        , subtitle = "2021 has been removed from the figure since there were only seven home games and limited seating was made available"
