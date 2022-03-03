@@ -12,6 +12,9 @@ library(nbastatR)
 library(extrafont)
 library(rvest)
 library(lubridate)
+library(RColorBrewer)
+library(ggridges)
+
 
 # set seed
 set.seed(20483789)
@@ -19,7 +22,7 @@ set.seed(20483789)
 # for downloads
 Sys.setenv(VROOM_CONNECTION_SIZE = 131072*3)
 
-dat_team <- game_logs(seasons = 2022, result_types = "team")
+dat_team <- game_logs(seasons = c(2012:2022), result_types = "team")
 
 dat_wiz <- dat_team %>% filter(nameTeam == "Washington Wizards")
 
@@ -36,7 +39,7 @@ get_urls <- function(year) {
   url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, 
                 "_games-", month, ".html")
   
-  }
+}
 
 urls <- get_urls(year)
 
@@ -47,14 +50,14 @@ urls[9] <- "https://www.basketball-reference.com/leagues/NBA_2020_games-october-
 
 # clean up urls
 urls2 <- urls[c(-1 # 2011-2012 season started in December, this is October
-               , -34 # 2011-2012 season started in December, this is November
-               , -64 # no May 2020 games due to Covid-19
-               , -65 # no October 2021 games due to Covid-19
-               , -10 # no November 2021 games to Covid-19
-               , -55 # we haven't made it to April 2022 yet
-               , -88 # we haven't made it to May 2022 yet
-               , -22 # haven't made it to March 2022 yet
-               )]
+                , -34 # 2011-2012 season started in December, this is November
+                , -64 # no May 2020 games due to Covid-19
+                , -65 # no October 2021 games due to Covid-19
+                , -10 # no November 2021 games to Covid-19
+                , -55 # we haven't made it to April 2022 yet
+                , -88 # we haven't made it to May 2022 yet
+                # , -22 # haven't made it to March 2022 yet
+)]
 
 
 
@@ -113,6 +116,32 @@ nbastart_dat2 <- nbastart_dat %>%
   )) %>% 
   select(-game_remarks)
 
+
+# update fivethirtyeight data
+five38_wiz <- five38 %>% filter(season %in% year) %>% 
+  filter(team1 == "WAS" | team2 == "WAS")
+
+
+merge_wiz <- five38_wiz %>% 
+  left_join(nbastart_dat2, by = c("date" = "date_game"))
+
+# clean thing up a bit
+merge_wiz2 <- merge_wiz %>% filter(home_team_name== "Washington Wizards" 
+                                   & attendance>0 ) %>% 
+  mutate(log_att = log(attendance)) %>% 
+  left_join(dat_wiz, by = c("date" = "dateGame")) %>% 
+  select(-c("carm-elo1_pre":"raptor_prob2"), -playoff
+         , -neutral
+         , -importance
+         , -total_rating
+         , -overtimes
+         , -slugLeague
+         , -urlTeamSeasonLogo
+         , -idGame
+         , -hasVideo
+  )
+
+# calculate streaks
 get_streaks <- function(vec){
   x <- data.frame(result=vec)
   x <- x %>% mutate(lagged=lag(result)) %>%  #note: that's dplyr::lag, not stats::lag
@@ -123,19 +152,17 @@ get_streaks <- function(vec){
     ungroup()
   return(x)
 }
-streaks <- get_streaks(nbastart_dat2$result) %>% 
+
+# calculate streaks
+streaks <- get_streaks(merge_wiz2$result) %>% 
   mutate(streak = streak * ifelse(result == "W", 1, -1))
 
-nbastart_dat3 <- nbastart_dat2 %>% bind_cols(select(streaks, streak)) %>% 
-  rename()
 
-# update fivethirtyeight data
-five38_wiz <- five38 %>% filter(season %in% year) %>% 
-              filter(team1 == "WAS" | team2 == "WAS")
+# add in streaks
+merge_wiz3 <- merge_wiz2 %>% bind_cols(select(streaks, streak)) %>% 
+  mutate(month = month(date, label = T)
+         , day = wday(date, label =T))
 
-
-merge_wiz <- five38_wiz %>% 
-                left_join(nbastart_dat3, by = c("date" = "date_game"))
 
 # let's just look at attendance over time
 
@@ -180,7 +207,7 @@ merge_wiz %>%
   filter(home_team_name== "Washington Wizards" 
          & attendance!=0
          & season!=2021
-         ) %>% 
+  ) %>% 
   # group_by(season) %>% 
   # mutate(mean_att = mean(attendance)) %>% 
   # ungroup() %>% 
@@ -193,35 +220,139 @@ merge_wiz %>%
   facet_grid(~season, scales = "free_x", space = "free_x") +
   theme_minimal() +
   theme(panel.spacing = unit(0, 'lines')
-       # , axis.text.x=element_text(angle=60, hjust=1)
-       ) +
+        # , axis.text.x=element_text(angle=60, hjust=1)
+  ) +
   labs(x = "", y = "Attendance"
        , title = "Attendance by Season"
        , subtitle = "2021 has been removed from the figure since there were only seven home games and limited seating was made available"
        , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
        
-       )
-
-merge_wiz %>% 
-  filter(home_team_name== "Washington Wizards") %>% 
-  select(-playoff, -neutral, -team1,-date, -team2, -game_id, -game_start_time, -visitor_team_name, -overtimes, -home_team_name, -box_score_text) %>% 
-  pivot_longer(cols = -c(attendance
-                         , result)
-               , names_to = "Stat", values_to= "Value") %>% 
-  filter(Stat %in% c("elo_prob1", "carm-elo_prob1", "quality", "streak")) %>%
-  mutate(Value = ifelse(Stat %in% c("quality", "streak")==T, Value/100, Value)) %>% 
-  ggplot(aes(y = attendance, x = Value)) +
-  geom_point() +
-  geom_smooth(method = "loess", se = F) +
-  facet_wrap(~Stat)
-
-merge_wiz2 <- merge_wiz %>% filter(home_team_name== "Washington Wizards" 
-                                   & attendance>0 ) %>% 
-  mutate(log_att = log(attendance))
+  )
 
 
+# attendance by team
+# 
+# merge_wiz3 %>% 
+#   filter(home_team_name== "Washington Wizards" 
+#          & attendance!=0
+#          & season!=2021
+#   ) %>% 
+#   group_by(team2) %>% 
+#   mutate(med = median(attendance, na.rm=T)) %>% 
+#   ungroup() %>% 
+#   ggplot(aes(x = reorder(team2,med), y = attendance , group = team2)) +
+#   geom_jitter(alpha = 0.3, width = .2) +
+#   geom_boxplot(fill = NA) +
+#   scale_y_continuous(labels = scales::comma_format()) +
+#   # facet_grid(~season, scales = "free_x", space = "free_x") +
+#   theme_minimal() +
+#   # theme(panel.spacing = unit(0, 'lines')
+#         # , axis.text.x=element_text(angle=60, hjust=1)
+#   # ) +
+#   labs(x = "", y = "Attendance"
+#        , title = "Attendance by Team"
+#        , subtitle = "2021 has been removed from the figure since there were only seven home games and limited seating was made available"
+#        , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
+#        
+#   )
+
+merge_wiz3 %>% 
+  filter(home_team_name== "Washington Wizards" 
+         & attendance!=0
+         & season!=2021
+  ) %>% 
+  group_by(team2) %>% 
+  mutate(med = mean(attendance, na.rm=T)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = reorder(team2,med), y = attendance , group = team2)) +
+  stat_summary(fun.data = "mean_cl_boot", size = 2) +
+  scale_y_continuous(labels = scales::comma_format()) +
+  theme_minimal() +
+  labs(x = "", y = "Attendance"
+       , title = "Attendance by Team"
+       , subtitle = "2021 has been removed from the figure since there were only seven home games and limited seating was made available"
+       , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
+       
+  )
+
+
+# attendance by day
+
+
+merge_wiz3 %>% 
+  filter(home_team_name== "Washington Wizards" 
+         & attendance!=0
+         & season!=2021
+  ) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = day, y = attendance , group = day)) +
+  stat_summary(fun.data = "mean_cl_boot", size = 2) +
+  scale_y_continuous(labels = scales::comma_format()) +
+  # facet_grid(~factor(month, levels = c("Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May")),  scales = "free_x") +
+  theme_minimal() +
+    theme(panel.spacing = unit(0, 'lines')
+    # , axis.text.x=element_text(angle=60, hjust=1)
+    ) +
+  labs(x = "", y = "Attendance"
+       , title = "Attendance by Day and Month"
+       , subtitle = "2021 has been removed from the figure since there were only seven home games and limited seating was made available"
+       , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
+       
+  )
+
+
+
+cors <- cor(merge_wiz3[ , purrr::map_lgl(merge_wiz3, is.numeric)] # just keep the numeric variables
+            , use="pairwise.complete.obs") # matrix completition
+
+corrplot::corrplot(cors) # correlations
+
+# linear model
 m1 <- lm(log_att ~ 
            elo_prob1
          + quality
-         + lag(log_att)+ lag(log_att, 2) + season 
-         + poly(streak, 2), data = merge_wiz2)
+         + lag(log_att)
+         + lag(log_att, 2)
+         # + streak
+         # + plusminusTeam
+         # + lag(plusminusTeam)
+         # + slugOpponent
+         + lag(outcomeGame)
+         # + fgmTeam
+         # + lag(fgmTeam)
+         # + lag(fgaTeam)
+         # + lag(astTeam)
+         # + ptsTeam
+         # + lag(ptsTeam)
+         + month
+         + day
+         + factor(season)*slugOpponent
+         , data = merge_wiz3)
+
+
+summary(m1)
+
+# poisson
+m2 <- glm(attendance ~ 
+            elo_prob1
+          + quality
+          + lag(attendance)
+          + lag(attendance, 2)
+          # + streak
+          # + plusminusTeam
+          # + lag(plusminusTeam)
+          + slugOpponent
+          + lag(outcomeGame)
+          # + fgmTeam
+          # + lag(fgmTeam)
+          # + lag(fgaTeam)
+          # + lag(astTeam)
+          # + ptsTeam
+          # + lag(ptsTeam)
+          + month
+          + day
+          # + factor(season)*slugOpponent
+          , data = merge_wiz3
+          , family = "poisson")
+
+summary(m2)
