@@ -14,7 +14,8 @@ library(rvest)
 library(lubridate)
 library(RColorBrewer)
 library(ggridges)
-
+library(tidybayes)
+library(rstanarm)
 
 # set seed
 set.seed(20483789)
@@ -168,7 +169,12 @@ merge_wiz3 <- merge_wiz2 %>% bind_cols(select(streaks, streak)) %>%
 weather_dat <- readr::read_csv("C:/Users/j.pattersonstein/Downloads/2894148.csv")
 
 merge_wiz4 <- merge_wiz3 %>% left_join(weather_dat, by = c("date" = "DATE")) %>% 
-  mutate(spread = home_pts-visitor_pts)
+  mutate(spread = home_pts-visitor_pts) %>% 
+  bind_cols(fastDummies::dummy_cols(merge_wiz4$day)) %>% 
+  select(-'.data') %>% 
+  bind_cols(fastDummies::dummy_cols(merge_wiz4$month)) %>% 
+    select(-'.data')
+
 
 # let's just look at attendance over time
 
@@ -331,6 +337,11 @@ merge_wiz3 %>%
   arrange(desc(max)) %>% 
   tail(n = 50) %>% print(n=50)
 
+merge_wiz3 %>% 
+  group_by(date) %>% 
+  mutate(max = max(attendance, na.rm=T)
+         , perct = max/20476
+  ) %>% group_by(season) %>% summarize(mean = mean(perct))
 
 
 cors <- cor(merge_wiz3[ , purrr::map_lgl(merge_wiz3, is.numeric)] # just keep the numeric variables
@@ -366,27 +377,95 @@ m1 <- lm(log_att ~
 
 summary(m1)
 
-# poisson
-m2 <- glm(attendance ~ 
+hist(predict(m1))
+
+# bayes
+m2 <- stan_glmer(log_att ~ 
             elo_prob1
           + quality
-          + lag(attendance)
-          + lag(attendance, 2)
-          # + streak
-          # + plusminusTeam
-          # + lag(plusminusTeam)
-          + slugOpponent
+          + lag(log_att)
+          + lag(log_att, 2)
+          + streak
           + lag(outcomeGame)
-          # + fgmTeam
-          # + lag(fgmTeam)
-          # + lag(fgaTeam)
-          # + lag(astTeam)
-          # + ptsTeam
-          # + lag(ptsTeam)
-          + month
-          + day
-          # + factor(season)*slugOpponent
-          , data = merge_wiz3
-          , family = "poisson")
+          + .data_Mon
+          + .data_Tue
+          + .data_Wed
+          + .data_Thu
+          + .data_Fri
+          + .data_Sat
+          + .data_Jan
+          + .data_Feb
+          + .data_Mar
+          + .data_Apr
+          + .data_May
+          + .data_Jun
+          + .data_Jul
+          + .data_Aug
+          + .data_Sep
+          + .data_Oct
+          + .data_Nov
+          + .data_Dec
+          + (1|season)
+          + (1|slugOpponent)
+          , data = merge_wiz4
+          )
 
 summary(m2)
+
+plot(m2)
+
+m2.out <- m2 %>%
+  spread_draws(`(Intercept)`, b[,slugOpponent]) %>%
+  mutate(other = `(Intercept)` + b)
+
+ggplot(m2.out, aes(y=fct_rev(slugOpponent), x=other, fill = slugOpponent)) + 
+  stat_halfeye(alpha = 0.8) +
+  geom_vline(aes(xintercept= mean(`(Intercept)`)), size=1.2, color="darkgrey", alpha=.4) +
+  theme_minimal() +
+  theme(legend.position = "NA")
+
+
+# basic model
+m3 <- stan_glmer(log_att ~ 
+                   elo_prob1
+                 + quality
+                 + lag(log_att)
+                 + lag(log_att, 2)
+                 + streak
+                 + lag(outcomeGame)
+                 + .data_Mon
+                 + .data_Tue
+                 + .data_Wed
+                 + .data_Thu
+                 + .data_Fri
+                 + .data_Sat
+                 + .data_Jan
+                 + .data_Feb
+                 + .data_Mar
+                 + .data_Apr
+                 + .data_May
+                 + .data_Jun
+                 + .data_Jul
+                 + .data_Aug
+                 + .data_Sep
+                 + .data_Oct
+                 + .data_Nov
+                 + .data_Dec
+                 # + (1|season)
+                 + (season|slugOpponent)
+                 , data = merge_wiz4[merge_wiz4$season!=2021,]
+)
+
+summary(m3)
+
+plot(m3)
+
+m3.out <- m3 %>%
+  spread_draws(`(Intercept)`, b[season,slugOpponent]) %>%
+  mutate(other = `(Intercept)` + b)
+
+ggplot(m3.out, aes(y=fct_rev(slugOpponent), x=other, fill = slugOpponent)) + 
+  stat_halfeye(alpha = 0.8) +
+  geom_vline(aes(xintercept= mean(`(Intercept)`)), size=1.2, color="darkgrey", alpha=.4) +
+  theme_minimal() +
+  theme(legend.position = "NA")
