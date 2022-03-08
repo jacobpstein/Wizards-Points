@@ -544,7 +544,7 @@ hist(posterior_predict(m1))
 
 
 
-# basic linear model with covariates
+# basic linear model with covariates, not a great model
 m2 <- stan_glm(log_att ~ 
                  elo_prob1
                + quality
@@ -573,9 +573,20 @@ m2 <- stan_glm(log_att ~
 
 
 
-plot(m2, regex_pars = "log_att", plotfun = "hist")
+plot(m2, plotfun = "hist")
 
 pp_check(m2, plotfun = "hist", nreps = 5)
+
+
+# coefficient plot
+sjPlot::plot_model(m2
+                   , bpe = "mean"
+                   # , bpe.style = "dot"
+                   , sort.est = TRUE
+                   # , bpe.color  = "black"
+                   , line.size = 3
+                   , dot.size = 3
+                   , value.size = 3)
 
 # random effects
 
@@ -782,17 +793,17 @@ m5 <- stan_glmer(log_att ~
                  + streak
                  + lag(outcomeGame)
                  + TMAX
-                 # + lag(spread)
-                 # + plusminusTeam
+                 + lag(spread)
+                 + plusminusTeam
                  + lag(plusminusTeam)
                  + lag(outcomeGame)
                  + fgmTeam
                  + lag(fgmTeam)
-                 # + lag(fgaTeam)
-                 # + lag(astTeam)
-                 # + ptsTeam
-                 # + lag(ptsTeam)
-                 + (1+day|month)
+                 + lag(fgaTeam)
+                 + lag(astTeam)
+                 + ptsTeam
+                 + lag(ptsTeam)
+                 + (day|month)
                  + (1|season)
                  + (1|slugOpponent)
                  , data = merge_wiz4[merge_wiz4$attendance!=0,]
