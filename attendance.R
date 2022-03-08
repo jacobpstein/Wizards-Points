@@ -874,3 +874,41 @@ prior_summary(m6)
 
 pp_check(m6, plotfun = "hist", nreps = 5)
 
+# cluster day, month, and team by season
+m7 <- stan_glmer(log_att ~ 
+                     elo_prob1
+                   + quality
+                   # + lag(log_att)
+                   + streak
+                   + lag(outcomeGame)
+                   + TMAX
+                   + lag(spread)
+                   + plusminusTeam
+                   + lag(plusminusTeam)
+                   + lag(outcomeGame)
+                   + fgmTeam
+                   + lag(fgmTeam)
+                   + lag(fgaTeam)
+                   + lag(astTeam)
+                   + ptsTeam
+                   + lag(ptsTeam)
+                 # + (1|day)
+                 # + (1|month)
+                 + (day + month + slugOpponent|season)
+                 # + (1|slugOpponent)
+                 , data = merge_wiz4[merge_wiz4$attendance!=0,]
+  )
+
+pp_check(m7, plotfun = "hist", nreps = 5)
+
+
+sjPlot::plot_model(m7
+                   , bpe = "mean"
+                   # , bpe.style = "dot"
+                   , sort.est = TRUE
+                   # , bpe.color  = "black"
+                   , line.size = 3
+                   , dot.size = 3
+                   , value.size = 3)
+
+shinystan::launch_shinystan(m7)
