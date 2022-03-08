@@ -63,7 +63,7 @@ urls2 <- urls[c(-1 # 2011-2012 season started in December, this is October
 )]
 
 
-
+# actuall get the data
 get_data <- function(urls2) {
   webpage <- read_html(urls2)
   
@@ -100,6 +100,7 @@ get_data <- function(urls2) {
   
 }
 
+# bring all seasons together into a list
 nba_list <- NULL
 for(i in 1:length(urls2)){
   tmp <- get_data(urls2[i]) 
@@ -186,7 +187,8 @@ merge_wiz3 <- merge_wiz2 %>% bind_cols(select(streaks, streak)) %>%
 
 
 
-# weather data
+# weather data from NOAA 
+# https://www.ncdc.noaa.gov/cdo-web/datasets#GHCND
 weather_dat <- readr::read_csv("2894148.csv")
 
 merge_wiz4 <- merge_wiz3 %>% 
