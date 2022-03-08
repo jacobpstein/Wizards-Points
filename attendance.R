@@ -892,10 +892,10 @@ m7 <- stan_glmer(log_att ~
                    + lag(astTeam)
                    + ptsTeam
                    + lag(ptsTeam)
-                 # + (1|day)
-                 # + (1|month)
-                 + (day + month + slugOpponent|season)
-                 # + (1|slugOpponent)
+                  + (1|day)
+                  + (1|month)
+                 + (1|season)
+                  + (1|slugOpponent)
                  , data = merge_wiz4[merge_wiz4$attendance!=0,]
   )
 
