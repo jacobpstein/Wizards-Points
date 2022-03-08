@@ -198,7 +198,7 @@ merge_wiz4 <- merge_wiz3 %>%
   select(-'.data') %>% 
   filter(team2!="NJN"
          & typeSeason == "Regular Season"
-         ) 
+  ) 
 
 
 
@@ -313,7 +313,7 @@ p1 <- merge_wiz4 %>%
   theme_minimal() +
   theme(panel.spacing = unit(0, 'lines')
         , text = element_text(size = 20)
-          
+        
   ) +
   labs(x = "", y = ""
        , title = "Attendance by Season"
@@ -512,38 +512,106 @@ cors <- cor(merge_wiz3[ , purrr::map_lgl(merge_wiz3, is.numeric)] # just keep th
 corrplot::corrplot(cors) # correlations
 
 # basic linear model
-m1 <- stan_glmer(log_att ~ 
-           elo_prob1
-         + quality
-         + lag(log_att)
-         # + PRCP
-         + TMAX
-         + lag(spread)
-         + streak
-         + plusminusTeam
-         + lag(plusminusTeam)
-         + lag(outcomeGame)
-         + fgmTeam
-         + lag(fgmTeam)
-         + lag(fgaTeam)
-         + lag(astTeam)
-         + ptsTeam
-         + lag(ptsTeam)
-         + (1|team2)
-         + (1 | season)
-         + (day | month)
-         , data = merge_wiz4[merge_wiz4$attendance!=0,])
+m1 <- stan_glm(log_att ~ 
+                 #   elo_prob1
+                 # + quality
+                 # + lag(log_att)
+                 # # + PRCP
+                 # + TMAX
+                 # + lag(spread)
+                 # + streak
+                 # + plusminusTeam
+                 # + lag(plusminusTeam)
+                 # + lag(outcomeGame)
+                 # + fgmTeam
+                 # + lag(fgmTeam)
+                 # + lag(fgaTeam)
+                 # + lag(astTeam)
+                 # + ptsTeam
+                 # + lag(ptsTeam)
+                 # + (1|team2)
+                 team2 + factor(season)
+                 # + (1 | season)
+                 # + (day | month)
+                 , data = merge_wiz4[merge_wiz4$attendance!=0,])
 
 
 summary(m1)
 
+median(bayes_R2(m1))
+
 hist(posterior_predict(m1))
 
-plot(m1, regex_pars = "log_att", plotfun = "hist")
 
-pp_check(m1, plotfun = "hist", nreps = 5)
 
-p4 <- plot(m1, regex_pars = "log_att", plotfun = "hist") + 
+# basic linear model with covariates
+m2 <- stan_glm(log_att ~ 
+                 elo_prob1
+               + quality
+               + lag(log_att)
+               # + PRCP
+               + TMAX
+               + lag(spread)
+               + streak
+               + plusminusTeam
+               + lag(plusminusTeam)
+               + lag(outcomeGame)
+               + fgmTeam
+               + lag(fgmTeam)
+               + lag(fgaTeam)
+               + lag(astTeam)
+               + ptsTeam
+               + lag(ptsTeam)
+               + day
+               + month
+               # + (1|team2)
+               + team2 
+               +   factor(season)
+               # + (1 | season)
+               # + (day | month)
+               , data = merge_wiz4[merge_wiz4$attendance!=0,])
+
+
+
+plot(m2, regex_pars = "log_att", plotfun = "hist")
+
+pp_check(m2, plotfun = "hist", nreps = 5)
+
+# random effects
+
+
+# basic linear model with covariates
+m3 <- stan_glm(log_att ~ 
+                 elo_prob1
+               + quality
+               + lag(log_att)
+               # + PRCP
+               + TMAX
+               + lag(spread)
+               + streak
+               + plusminusTeam
+               + lag(plusminusTeam)
+               + lag(outcomeGame)
+               + fgmTeam
+               + lag(fgmTeam)
+               + lag(fgaTeam)
+               + lag(astTeam)
+               + ptsTeam
+               + lag(ptsTeam)
+               + day
+               + month
+               + (1|team2)
+               + (1 | season)
+               + (day | month)
+               , data = merge_wiz4[merge_wiz4$attendance!=0,])
+
+
+
+plot(m3, regex_pars = "log_att", plotfun = "hist")
+
+pp_check(m3, plotfun = "hist", nreps = 5)
+
+p4 <- plot(m3, regex_pars = "log_att", plotfun = "hist") + 
   scale_x_continuous(labels = scales::percent_format()) +
   theme_minimal() +
   labs(x = "% Change in average attendance", y = ""
@@ -552,11 +620,11 @@ p4 <- plot(m1, regex_pars = "log_att", plotfun = "hist") +
        
   )
 
-ggsave("Attendance by Team.png", p3, width = 16, height = 7, dpi = 300, type = 'cairo')
+ggsave("Predicted attendance by previous attendance.png", p4, width = 16, height = 7, dpi = 300, type = 'cairo')
 
 
-# bayes
-m2 <- stan_glmer(log_att ~ 
+# individual days
+m4 <- stan_glmer(log_att ~ 
                    elo_prob1
                  + quality
                  + lag(log_att)
@@ -596,7 +664,7 @@ m2 <- stan_glmer(log_att ~
                  , data = merge_wiz4[merge_wiz4$attendance!=0,]
 )
 
-summary(m2)
+summary(m4)
 
 # 
 # # check with poisson model
@@ -645,23 +713,23 @@ summary(m2)
 
 # check fit
 
-pp_check(m2, plotfun = "hist", nreps = 5)
+pp_check(m4, plotfun = "hist", nreps = 5)
 # the model is a good fit to the data based on generated data yrep
 # from the posterior predictive distribution. 
 # It looks a lot like the observed data y. 
 # That is, given y, the yrep we generate appears plausible
 
 # check the distribution of a test quantity compared to the value of the quantity in the observed data
-pp_check(m2, plotfun = "stat", stat = "mean")
+pp_check(m4, plotfun = "stat", stat = "mean")
 
 # check R2
-hist(bayes_R2(m2))
+hist(bayes_R2(m4))
 
 
-median(bayes_R2(m2))
+median(bayes_R2(m4))
 
 # coefficient plot
-sjPlot::plot_model(m2
+sjPlot::plot_model(m4
                    , bpe = "mean"
                    # , bpe.style = "dot"
                    , sort.est = TRUE
@@ -671,7 +739,7 @@ sjPlot::plot_model(m2
                    , value.size = 3)
 
 
-m2.out <- m2 %>% broom::tidy(conf.int = TRUE) %>% 
+m4.out <- m4 %>% broom::tidy(conf.int = TRUE) %>% 
   mutate(var = c("Intercept"
                  , "538 Win Prob."
                  , "538 'Quality' Rating"
@@ -689,24 +757,25 @@ m2.out <- m2 %>% broom::tidy(conf.int = TRUE) %>%
                  , "Oct"
                  , "Nov"
                  , "Dec"
-                 )) %>% 
+  )) %>% 
   filter(var!= "Intercept") %>% 
   arrange(desc(estimate))
 
-m2.out %>% 
+m4.out %>% 
   mutate(sig = case_when(conf.low<0 & conf.high>0 ~ "Too Noisy"
                          , conf.low<0 & conf.high<0 ~ "Negative"
                          , conf.low>0 & conf.high>0 ~ "Positive")) %>% 
-ggplot()+
+  ggplot()+
   geom_linerange(aes(xmin = conf.low
                      , xmax = conf.high
                      , y = reorder(var, estimate), col = sig), size = 2) +
   geom_label(aes(x = estimate, y = reorder(var, estimate)
                  , label = paste0(round(estimate, 2)*100, "%"), col = sig)) +
   scale_color_manual(values = c("#BA0C2F", "#002F6C", "#6C6463"))
-  
 
-m3 <- stan_glmer(log_att ~ 
+
+# vary intercepts vary slopes
+m5 <- stan_glmer(log_att ~ 
                    elo_prob1
                  + quality
                  + lag(log_att)
@@ -730,7 +799,7 @@ m3 <- stan_glmer(log_att ~
 )
 
 
-sjPlot::plot_model(m3
+sjPlot::plot_model(m5
                    , bpe = "mean"
                    # , bpe.style = "dot"
                    , sort.est = TRUE
@@ -739,7 +808,9 @@ sjPlot::plot_model(m3
                    , dot.size = 3
                    , value.size = 3)
 
-m4 <- stan_glmer(log_att ~ 
+
+# pull out month and day, team and season effects
+m6 <- stan_glmer(log_att ~ 
                    elo_prob1
                  + quality
                  + lag(log_att)
@@ -769,53 +840,9 @@ m4 <- stan_glmer(log_att ~
                  , family = "Gamma"
 )
 
-summary(m4)
+summary(m6)
 
-prior_summary(m4)
+prior_summary(m6)
 
-pp_check(m4, plotfun = "hist", nreps = 5)
-# 
-# # basic model
-# m3 <- stan_glmer(log_att ~ 
-#                    elo_prob1
-#                  + quality
-#                  + lag(log_att)
-#                  + lag(log_att, 2)
-#                  + streak
-#                  + lag(outcomeGame)
-#                  + .data_Mon
-#                  + .data_Tue
-#                  + .data_Wed
-#                  + .data_Thu
-#                  + .data_Fri
-#                  + .data_Sat
-#                  + .data_Jan
-#                  + .data_Feb
-#                  + .data_Mar
-#                  + .data_Apr
-#                  + .data_May
-#                  + .data_Jun
-#                  + .data_Jul
-#                  + .data_Aug
-#                  + .data_Sep
-#                  + .data_Oct
-#                  + .data_Nov
-#                  + .data_Dec
-#                  # + (1|season)
-#                  + (season|slugOpponent)
-#                  , data = merge_wiz4[merge_wiz4$season!=2021,]
-# )
-# 
-# summary(m3)
-# 
-# plot(m3)
-# 
-# m3.out <- m3 %>%
-#   spread_draws(`(Intercept)`, b[season,slugOpponent]) %>%
-#   mutate(other = `(Intercept)` + b)
-# 
-# ggplot(m3.out, aes(y=fct_rev(slugOpponent), x=other, fill = slugOpponent)) + 
-#   stat_halfeye(alpha = 0.8) +
-#   geom_vline(aes(xintercept= mean(`(Intercept)`)), size=1.2, color="darkgrey", alpha=.4) +
-#   theme_minimal() +
-#   theme(legend.position = "NA")
+pp_check(m6, plotfun = "hist", nreps = 5)
+
