@@ -594,10 +594,10 @@ sjPlot::plot_model(m2
 
 
 # basic linear model with covariates
-m3 <- stan_glm(log_att ~ 
+m3 <- stan_glmer(log_att ~ 
                  elo_prob1
                + quality
-               + lag(log_att)
+               # + lag(log_att)
                # + PRCP
                + TMAX
                + lag(spread)
@@ -611,24 +611,50 @@ m3 <- stan_glm(log_att ~
                + lag(astTeam)
                + ptsTeam
                + lag(ptsTeam)
-               + day
-               + month
+               + .data_Mon
+               + .data_Tue
+               + .data_Wed
+               + .data_Thu
+               + .data_Fri
+               + .data_Sat
+               + .data_Jan
+               + .data_Feb
+               + .data_Mar
+               + .data_Apr
+               + .data_Oct
+               + .data_Nov
+               + .data_Dec
                + (1|team2)
                + (1 | season)
-               + (day | month)
+               # + (day | month)
                , data = merge_wiz4[merge_wiz4$attendance!=0,])
 
 
 
-plot(m3, regex_pars = "log_att", plotfun = "hist")
+plot(m3, regex_pars = c(".data"), plotfun = "hist")
 
 pp_check(m3, plotfun = "hist", nreps = 5)
 
-p4 <- plot(m3, regex_pars = "log_att", plotfun = "hist") + 
+median(bayes_R2(m3))
+
+
+# coefficient plot
+sjPlot::plot_model(m3
+                   , bpe = "mean"
+                   # , bpe.style = "dot"
+                   , sort.est = TRUE
+                   # , bpe.color  = "black"
+                   , line.size = 3
+                   , dot.size = 3
+                   , value.size = 3)
+
+
+
+p4 <- plot(m3, regex_pars = "Sat", plotfun = "hist") + 
   scale_x_continuous(labels = scales::percent_format()) +
   theme_minimal() +
   labs(x = "% Change in average attendance", y = ""
-       , title = "Predicted attendance based on prior game's attendance"
+       , title = "Predicted attendance for Saturdays"
        , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
        
   )
@@ -636,7 +662,7 @@ p4 <- plot(m3, regex_pars = "log_att", plotfun = "hist") +
 ggsave("Predicted attendance by previous attendance.png", p4, width = 16, height = 7, dpi = 300, type = 'cairo')
 
 
-# individual days
+# individual days, month fixed effects 
 m4 <- stan_glmer(log_att ~ 
                    elo_prob1
                  + quality
@@ -660,17 +686,6 @@ m4 <- stan_glmer(log_att ~
                  + .data_Thu
                  + .data_Fri
                  + .data_Sat
-                 # + .data_Jan
-                 # + .data_Feb
-                 # + .data_Mar
-                 # + .data_Apr
-                 # + .data_Jun
-                 # + .data_Jul
-                 # + .data_Aug
-                 # + .data_Sep
-                 # + .data_Oct
-                 # + .data_Nov
-                 # + .data_Dec
                  + (1|month)
                  + (1|season)
                  + (1|slugOpponent)
@@ -822,7 +837,7 @@ sjPlot::plot_model(m5
                    , value.size = 3)
 
 
-# pull out month and day, team and season effects
+# Gamma distribution
 m6 <- stan_glmer(log_att ~ 
                    elo_prob1
                  + quality
