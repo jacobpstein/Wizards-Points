@@ -113,10 +113,10 @@ nbastart_dat <- do.call(rbind, nba_list)
 # glimpse(nbastart_dat)
 
 nbastart_dat2 <- nbastart_dat %>% 
-  mutate(result = case_when(visitor_team_name == "Washington Wizards" & visitor_pts > home_pts ~ "W"
-                            , home_team_name == "Washington Wizards" & home_pts > visitor_pts ~ "W"
-                            , visitor_team_name == "Washington Wizards" & visitor_pts < home_pts ~ "L"
-                            , home_team_name == "Washington Wizards" & home_pts < visitor_pts ~ "L"
+  mutate(result = case_when(team2 == "WAS" & score2 > score1 ~ "W"
+                            , team1 == "WAS" & score1 > score2 ~ "W"
+                            , team2 == "WAS" & score2 < score1 ~ "L"
+                            , team1 == "WAS" & score1 < score2 ~ "L"
   )) %>% 
   select(-game_remarks)
 
@@ -143,13 +143,13 @@ get_streaks <- function(vec){
   return(x)
 }
 
-streaks <- get_streaks(merge_wiz$result) %>% 
+streaks <- get_streaks(merge_wiz$result[is.na(merge_wiz$result)!=T]) %>% 
   mutate(streak = streak * ifelse(result == "W", 1, -1)
   )
 
 
 # clean thing up a bit
-merge_wiz2 <- merge_wiz %>% 
+merge_wiz2 <- merge_wiz %>% filter(is.na(result)!=T) %>% 
   bind_cols(select(
     streaks
     ,streak)) %>% 
@@ -531,24 +531,24 @@ corrplot::corrplot(cors) # correlations
 
 # basic linear model
 m1 <- stan_glm(log_att ~ 
-                 #   elo_prob1
-                 # + quality
-                 # + lag(log_att)
-                 # # + PRCP
-                 # + TMAX
-                 # + lag(spread)
-                 # + streak
-                 # + plusminusTeam
-                 # + lag(plusminusTeam)
-                 # + lag(outcomeGame)
-                 # + fgmTeam
-                 # + lag(fgmTeam)
-                 # + lag(fgaTeam)
-                 # + lag(astTeam)
-                 # + ptsTeam
-                 # + lag(ptsTeam)
-                 # + (1|team2) +
-                 win 
+                   elo_prob1
+                 + quality
+                 + lag(log_att)
+                 # + PRCP
+                 + TMAX
+                 + lag(spread)
+                 + streak
+                 + plusminusTeam
+                 + lag(plusminusTeam)
+                 + lag(outcomeGame)
+                 + fgmTeam
+                 + lag(fgmTeam)
+                 + lag(fgaTeam)
+                 + lag(astTeam)
+                 + ptsTeam
+                 + lag(ptsTeam)
+                 # + (1|team2)
+                 + win 
                  + team2 
                  + factor(season)
                  # + (1 | season)
