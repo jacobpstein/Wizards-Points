@@ -823,11 +823,12 @@ m4.out %>%
 
 
 # vary intercepts vary slopes
-m5 <- stan_glmer(log_att ~ 
+m5 <- stan_glmer(log_att ~
                    elo_prob1
                  + quality
-                 + lag(log_att)
+                 # + lag(log_att)
                  + streak
+                 + lag(streak)
                  + lag(outcomeGame)
                  + TMAX
                  + lag(spread)
@@ -840,7 +841,8 @@ m5 <- stan_glmer(log_att ~
                  + lag(astTeam)
                  + ptsTeam
                  + lag(ptsTeam)
-                 + (day|month)
+                 + (1|day)
+                 + (1|month)
                  + (1|season)
                  + (1|slugOpponent)
                  , data = merge_wiz4[merge_wiz4$attendance!=0,]
