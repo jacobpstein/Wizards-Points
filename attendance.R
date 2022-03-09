@@ -146,7 +146,6 @@ merge_wiz2 <- merge_wiz %>% filter(home_team_name== "Washington Wizards"
   )
 
 # calculate streaks
-# this comes from https://www.r-bloggers.com/2020/06/detecting-streaks-in-r/
 get_streaks <- function(vec){
   x <- data.frame(result=vec)
   x <- x %>% mutate(lagged=lag(result)) %>%  #note: that's dplyr::lag, not stats::lag
@@ -160,12 +159,12 @@ get_streaks <- function(vec){
 
 # calculate streaks
 streaks <- get_streaks(merge_wiz2$result) %>% 
-  mutate(streak = streak * ifelse(result == "W", 1, -1))
+  mutate(streak = streak * ifelse(result == "W", 1, -1)
+         )
 
 # get team colors
-# from the F5 https://thef5.substack.com/p/hex-snowflake-charts?s=r
-tm_colors <- teamcolors
-tm_colors <- tm.colors %>% 
+tm.colors <- teamcolors
+tm.colors <- tm.colors %>% 
   filter(league == "nba") %>% 
   select("nameTeam" = name, primary) %>% 
   mutate(primary = case_when(
@@ -181,11 +180,20 @@ tm_colors <- tm.colors %>%
   )) 
 
 
+# add in season win percentage
+win_pct <- merge_wiz %>% 
+  mutate(win = ifelse(result == "W", 1, 0)) %>% 
+  filter(attendance>0) %>% group_by(season) %>% 
+  summarize(win = mean(win, na.rm=T), attendance = mean(attendance, na.rm=T))%>% ungroup()
+
 # add in streaks
-merge_wiz3 <- merge_wiz2 %>% bind_cols(select(streaks, streak)) %>% 
+merge_wiz3 <- merge_wiz2 %>% bind_cols(select(
+  streaks
+  ,streak)) %>% 
   mutate(month = month(date, label = T)
          , day = wday(date, label =T)) %>% 
-  left_join(tm.colors, by = c("visitor_team_name" = "nameTeam"))
+  left_join(tm.colors, by = c("visitor_team_name" = "nameTeam")) %>% 
+  left_join(select(win_pct, season, win))
 
 
 
@@ -533,8 +541,10 @@ m1 <- stan_glm(log_att ~
                  # + lag(astTeam)
                  # + ptsTeam
                  # + lag(ptsTeam)
-                 # + (1|team2)
-                 team2 + factor(season)
+                 # + (1|team2) +
+                 win 
+                 + team2 
+                 + factor(season)
                  # + (1 | season)
                  # + (day | month)
                  , data = merge_wiz4[merge_wiz4$attendance!=0,])
@@ -894,10 +904,10 @@ m7 <- stan_glmer(log_att ~
                    + lag(astTeam)
                    + ptsTeam
                    + lag(ptsTeam)
-                  + (1|day)
-                  + (1|month)
-                 + (1|season)
-                  + (1|slugOpponent)
+                 # + (1|day)
+                 # + (1|month)
+                 + (day + month + slugOpponent|season)
+                 # + (1|slugOpponent)
                  , data = merge_wiz4[merge_wiz4$attendance!=0,]
   )
 
