@@ -129,8 +129,31 @@ five38_wiz <- five38 %>% filter(season %in% year) %>%
 merge_wiz <- five38_wiz %>% 
   left_join(nbastart_dat2, by = c("date" = "date_game"))
 
+
+# calculate streaks
+# from https://www.r-bloggers.com/2020/06/detecting-streaks-in-r/
+get_streaks <- function(vec){
+  x <- data.frame(result=vec)
+  x <- x %>% mutate(lagged=lag(result)) %>%  #note: that's dplyr::lag, not stats::lag
+    mutate(start=(result != lagged))
+  x[1, "start"] <- TRUE
+  x <- x %>% mutate(streak_id=cumsum(start))
+  x <- x %>% group_by(streak_id) %>% mutate(streak=row_number()) %>%
+    ungroup()
+  return(x)
+}
+
+streaks <- get_streaks(merge_wiz$result) %>% 
+  mutate(streak = streak * ifelse(result == "W", 1, -1)
+  )
+
+
 # clean thing up a bit
-merge_wiz2 <- merge_wiz %>% filter(home_team_name== "Washington Wizards" 
+merge_wiz2 <- merge_wiz %>% 
+  bind_cols(select(
+    streaks
+    ,streak)) %>% 
+  filter(home_team_name== "Washington Wizards" 
                                    & attendance>0 ) %>% 
   mutate(log_att = log(attendance)) %>% 
   left_join(dat_wiz, by = c("date" = "dateGame")) %>% 
@@ -143,26 +166,11 @@ merge_wiz2 <- merge_wiz %>% filter(home_team_name== "Washington Wizards"
          , -urlTeamSeasonLogo
          , -idGame
          , -hasVideo
-  )
+  ) 
 
-# calculate streaks
-get_streaks <- function(vec){
-  x <- data.frame(result=vec)
-  x <- x %>% mutate(lagged=lag(result)) %>%  #note: that's dplyr::lag, not stats::lag
-    mutate(start=(result != lagged))
-  x[1, "start"] <- TRUE
-  x <- x %>% mutate(streak_id=cumsum(start))
-  x <- x %>% group_by(streak_id) %>% mutate(streak=row_number()) %>%
-    ungroup()
-  return(x)
-}
-
-# calculate streaks
-streaks <- get_streaks(merge_wiz2$result) %>% 
-  mutate(streak = streak * ifelse(result == "W", 1, -1)
-         )
 
 # get team colors
+# from https://thef5.substack.com/p/hex-snowflake-charts?s=r
 tm.colors <- teamcolors
 tm.colors <- tm.colors %>% 
   filter(league == "nba") %>% 
@@ -187,9 +195,7 @@ win_pct <- merge_wiz %>%
   summarize(win = mean(win, na.rm=T), attendance = mean(attendance, na.rm=T))%>% ungroup()
 
 # add in streaks
-merge_wiz3 <- merge_wiz2 %>% bind_cols(select(
-  streaks
-  ,streak)) %>% 
+merge_wiz3 <- merge_wiz2 %>%
   mutate(month = month(date, label = T)
          , day = wday(date, label =T)) %>% 
   left_join(tm.colors, by = c("visitor_team_name" = "nameTeam")) %>% 
@@ -614,6 +620,7 @@ m3 <- stan_glmer(log_att ~
                + TMAX
                + lag(spread)
                + streak
+               + lag(streak)
                + plusminusTeam
                + lag(plusminusTeam)
                + lag(outcomeGame)
@@ -636,8 +643,7 @@ m3 <- stan_glmer(log_att ~
                + .data_Oct
                + .data_Nov
                + .data_Dec
-               + win
-               # + (win|season)
+               + (1|win)
                + (1|team2)
                + (1 | season)
                # + (day | month)
