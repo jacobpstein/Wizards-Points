@@ -643,7 +643,7 @@ m3 <- stan_glmer(log_att ~
                + .data_Oct
                + .data_Nov
                + .data_Dec
-               + (1|win)
+               # + (1|win)
                + (1|team2)
                + (1 | season)
                # + (day | month)
