@@ -812,14 +812,13 @@ m4.out %>%
   scale_color_manual(values = c("#BA0C2F", "#002F6C", "#6C6463"))
 
 
-# vary intercepts vary slopes
+# day and month effects
 m5 <- stan_glmer(log_att ~
                    elo_prob1
                  + quality
                  # + lag(log_att)
                  + streak
                  + lag(streak)
-                 + lag(outcomeGame)
                  + TMAX
                  + lag(spread)
                  + plusminusTeam
