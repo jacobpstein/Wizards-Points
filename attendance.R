@@ -191,15 +191,15 @@ tm.colors <- tm.colors %>%
 # add in season win percentage
 win_pct <- merge_wiz %>% 
   mutate(win = ifelse(result == "W", 1, 0)) %>% 
-  filter(attendance>0) %>% group_by(season) %>% 
-  summarize(win = mean(win, na.rm=T), attendance = mean(attendance, na.rm=T))%>% ungroup()
+  filter(attendance>0) %>% group_by(season) %>%
+  mutate(winpct = cummean(win)) %>% select(season, date, winpct, win)
 
 # add in streaks
 merge_wiz3 <- merge_wiz2 %>%
   mutate(month = month(date, label = T)
          , day = wday(date, label =T)) %>% 
   left_join(tm.colors, by = c("visitor_team_name" = "nameTeam")) %>% 
-  left_join(select(win_pct, season, win))
+  left_join(select(win_pct, date, win, winpct))
 
 
 
@@ -548,7 +548,7 @@ m1 <- stan_glm(log_att ~
                  + ptsTeam
                  + lag(ptsTeam)
                  # + (1|team2)
-                 + win 
+                 + winpct
                  + team2 
                  + factor(season)
                  # + (1 | season)
@@ -643,7 +643,7 @@ m3 <- stan_glmer(log_att ~
                + .data_Oct
                + .data_Nov
                + .data_Dec
-               # + (1|win)
+               + winpct
                + (1|team2)
                + (1 | season)
                # + (day | month)
@@ -670,7 +670,7 @@ sjPlot::plot_model(m3
 
 
 
-p4 <- plot(m3, regex_pars = "Sat", plotfun = "hist") + 
+p4 <- plot(m3, regex_pars = "win", plotfun = "hist") + 
   scale_x_continuous(labels = scales::percent_format()) +
   theme_minimal() +
   labs(x = "% Change in average attendance", y = ""
@@ -700,6 +700,7 @@ m4 <- stan_glmer(log_att ~
                  # + lag(astTeam)
                  # + ptsTeam
                  + lag(ptsTeam)
+                 + winpct
                  + .data_Mon
                  + .data_Tue
                  + .data_Wed
@@ -840,6 +841,7 @@ m5 <- stan_glmer(log_att ~
                  + lag(fgaTeam)
                  + lag(astTeam)
                  + ptsTeam
+                 + winpct
                  + lag(ptsTeam)
                  + (1|day)
                  + (1|month)
