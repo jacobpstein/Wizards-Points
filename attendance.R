@@ -670,17 +670,6 @@ sjPlot::plot_model(m3
 
 
 
-p4 <- plot(m3, regex_pars = "win", plotfun = "hist") + 
-  scale_x_continuous(labels = scales::percent_format()) +
-  theme_minimal() +
-  labs(x = "% Change in average attendance", y = ""
-       , title = "Predicted attendance for Saturdays"
-       , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
-       
-  )
-
-ggsave("Predicted attendance by previous attendance.png", p4, width = 16, height = 7, dpi = 300, type = 'cairo')
-
 
 # individual days, month fixed effects 
 m4 <- stan_glmer(log_att ~ 
@@ -835,14 +824,17 @@ m5 <- stan_glmer(log_att ~
                  + lag(spread)
                  + plusminusTeam
                  + lag(plusminusTeam)
-                 + lag(outcomeGame)
+                 + win 
+                 + lag(win)
                  + fgmTeam
                  + lag(fgmTeam)
+                 + fgaTeam
                  + lag(fgaTeam)
+                 + astTeam
                  + lag(astTeam)
+                 + lag(ptsTeam)
                  + ptsTeam
                  + winpct
-                 + lag(ptsTeam)
                  + (1|day)
                  + (1|month)
                  + (1|season)
@@ -859,6 +851,62 @@ sjPlot::plot_model(m5
                    , line.size = 3
                    , dot.size = 3
                    , value.size = 3)
+
+
+p5 <- plot(m5, regex_pars = "win", plotfun = "hist") + 
+  scale_x_continuous(labels = scales::percent_format()) +
+  theme_minimal() +
+  labs(x = "% Change in average attendance", y = ""
+       , title = "Predicted attendance for Saturdays"
+       , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
+       
+  )
+
+ggsave("Predicted attendance by win percentage.png", p5, width = 16, height = 7, dpi = 300, type = 'cairo')
+
+
+
+m5.out <- m5 %>% broom.mixed::tidy(conf.int = TRUE) %>% 
+  mutate(var = c("Intercept"
+                 , "538 Win Prob."
+                 , "538 'Quality' Rating"
+                 , "Win/Loss Streak"
+                 , "Win/Loss Streak (lagged)"
+                 , "Previous game outcome (win)"
+                 , "Local temperature"
+                 , "Previous home game's point spread"
+                 , "Plus/Minus"
+                 , "FG made"
+                 , "Previous home game's FG made"
+                 , "Previous home game's FG attempts"
+                 , "Previous home game's assists"
+                 , "Wiz. Points"
+                 , "Win %"
+                 , "Wiz. Points (previous home game)"
+                 
+  )) %>% 
+  filter(var!= "Intercept") %>% 
+  arrange(desc(estimate))
+
+m5.out %>% 
+  mutate(sig = case_when(conf.low<0 & conf.high>0 ~ "Too Noisy"
+                         , conf.low<0 & conf.high<0 ~ "Negative"
+                         , conf.low>0 & conf.high>0 ~ "Positive")) %>% 
+  ggplot()+
+  geom_linerange(aes(xmin = conf.low
+                     , xmax = conf.high
+                     , y = reorder(var, estimate), col = sig), size = 2) +
+  geom_label(aes(x = estimate, y = reorder(var, estimate)
+                 , label = paste0(round(estimate, 2)*100, "%"), col = sig), size =3) +
+  scale_color_manual(values = c("#BA0C2F", "#002F6C", "#6C6463")) + 
+  scale_x_continuous(labels = scales::percent_format()) +
+  theme_minimal() +
+  theme(legend.position = "NA"
+        , text = element_text(size = 20))  +
+  labs(x = "% Change in average attendance", y = ""
+       , title = "Predicted attendance after accounting for game, season, and date variation"
+       , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
+  ) 
 
 
 # Gamma distribution
