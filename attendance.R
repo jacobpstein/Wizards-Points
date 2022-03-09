@@ -146,6 +146,7 @@ merge_wiz2 <- merge_wiz %>% filter(home_team_name== "Washington Wizards"
   )
 
 # calculate streaks
+# this comes from https://www.r-bloggers.com/2020/06/detecting-streaks-in-r/
 get_streaks <- function(vec){
   x <- data.frame(result=vec)
   x <- x %>% mutate(lagged=lag(result)) %>%  #note: that's dplyr::lag, not stats::lag
@@ -162,8 +163,9 @@ streaks <- get_streaks(merge_wiz2$result) %>%
   mutate(streak = streak * ifelse(result == "W", 1, -1))
 
 # get team colors
-tm.colors <- teamcolors
-tm.colors <- tm.colors %>% 
+# from the F5 https://thef5.substack.com/p/hex-snowflake-charts?s=r
+tm_colors <- teamcolors
+tm_colors <- tm.colors %>% 
   filter(league == "nba") %>% 
   select("nameTeam" = name, primary) %>% 
   mutate(primary = case_when(
