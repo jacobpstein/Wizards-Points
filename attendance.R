@@ -113,10 +113,10 @@ nbastart_dat <- do.call(rbind, nba_list)
 # glimpse(nbastart_dat)
 
 nbastart_dat2 <- nbastart_dat %>% 
-  mutate(result = case_when(team2 == "WAS" & score2 > score1 ~ "W"
-                            , team1 == "WAS" & score1 > score2 ~ "W"
-                            , team2 == "WAS" & score2 < score1 ~ "L"
-                            , team1 == "WAS" & score1 < score2 ~ "L"
+  mutate(result = case_when(visitor_team_name == "Washington Wizards" & visitor_pts > home_pts ~ "W"
+                            , home_team_name == "Washington Wizards" & home_pts > visitor_pts ~ "W"
+                            , visitor_team_name == "Washington Wizards" & visitor_pts < home_pts ~ "L"
+                            , home_team_name == "Washington Wizards" & home_pts < visitor_pts ~ "L"
   )) %>% 
   select(-game_remarks)
 
@@ -127,7 +127,7 @@ five38_wiz <- five38 %>% filter(season %in% year) %>%
 
 
 merge_wiz <- five38_wiz %>% 
-  left_join(nbastart_dat2, by = c("date" = "date_game"))
+  left_join(nbastart_dat2, by = c("date" = "date_game")) 
 
 
 # calculate streaks
@@ -167,25 +167,6 @@ merge_wiz2 <- merge_wiz %>% filter(is.na(result)!=T) %>%
          , -idGame
          , -hasVideo
   ) 
-
-
-# get team colors
-# from https://thef5.substack.com/p/hex-snowflake-charts?s=r
-tm.colors <- teamcolors
-tm.colors <- tm.colors %>% 
-  filter(league == "nba") %>% 
-  select("nameTeam" = name, primary) %>% 
-  mutate(primary = case_when(
-    nameTeam == "Golden State Warriors" ~ "#1D428A",
-    nameTeam == "Indiana Pacers" ~ "#002D62",
-    nameTeam == "Los Angeles Lakers" ~ "#552583",
-    nameTeam == "San Antonio Spurs" ~ "#000000",
-    nameTeam == "Oklahoma City Thunder" ~ "#EF3B24",
-    nameTeam == "Charlotte Hornets" ~ "#00788C",
-    nameTeam == "Utah Jazz" ~ "#00471B",
-    nameTeam == "New Orleans Pelicans" ~ "#0C2340",
-    TRUE ~ primary
-  )) 
 
 
 # add in season win percentage
@@ -548,8 +529,9 @@ m1 <- stan_glm(log_att ~
                  + ptsTeam
                  + lag(ptsTeam)
                  # + (1|team2)
-                 + winpct
-                 + team2 
+                 +
+                 winpct
+                 + team2
                  + factor(season)
                  # + (1 | season)
                  # + (day | month)
@@ -557,6 +539,12 @@ m1 <- stan_glm(log_att ~
 
 
 summary(m1)
+
+posteriors <- insight::get_parameters(m1)
+
+ggplot(posteriors, aes(x = winpct)) +
+  geom_density(fill = "#002F6C")
+
 
 median(bayes_R2(m1))
 
@@ -656,6 +644,13 @@ plot(m3, regex_pars = c(".data"), plotfun = "hist")
 pp_check(m3, plotfun = "hist", nreps = 5)
 
 median(bayes_R2(m3))
+
+
+posteriors3 <- insight::get_parameters(m3)
+
+ggplot(posteriors3, aes(x = winpct)) +
+  geom_density(fill = "#002F6C")
+
 
 
 # coefficient plot
@@ -812,7 +807,7 @@ m4.out %>%
   scale_color_manual(values = c("#BA0C2F", "#002F6C", "#6C6463"))
 
 
-# day and month effects
+# vary intercepts vary slopes
 m5 <- stan_glmer(log_att ~
                    elo_prob1
                  + quality
