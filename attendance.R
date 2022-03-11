@@ -672,7 +672,7 @@ posteriors3 <- insight::get_parameters(m3)
 ggplot(posteriors3, aes(x = winpct)) +
   geom_density(fill = "#002F6C")
 
-
+performance::model_performance(m3)
 
 # coefficient plot
 sjPlot::plot_model(m3
@@ -691,12 +691,13 @@ sjPlot::plot_model(m3
 m4 <- stan_glmer(log_att ~ 
                    elo_prob1
                  + quality
-                 + lag(log_att)
+                 # + lag(log_att)
                  + streak
-                 + lag(outcomeGame)
+                 + lag(streak)
+                 # + lag(outcomeGame)
                  + TMAX
                  # + lag(spread)
-                 # + plusminusTeam
+                 + plusminusTeam
                  + lag(plusminusTeam)
                  # + lag(outcomeGame)
                  # + fgmTeam
@@ -719,6 +720,14 @@ m4 <- stan_glmer(log_att ~
 )
 
 summary(m4)
+
+
+posteriors4 <- insight::get_parameters(m4)
+
+ggplot(posteriors4, aes(x = winpct)) +
+  geom_density(fill = "#002F6C")
+
+performance::model_performance(m4)
 
 # 
 # # check with poisson model
@@ -793,24 +802,33 @@ sjPlot::plot_model(m4
                    , value.size = 3)
 
 
-m4.out <- m4 %>% broom::tidy(conf.int = TRUE) %>% 
+m4.out <- m4 %>% broom.mixed::tidy(conf.int = TRUE) %>% 
   mutate(var = c("Intercept"
                  , "538 Win Prob."
                  , "538 'Quality' Rating"
-                 , "Previous Game's Attendance"
+                 # , "Previous Game's Attendance"
+                 , "W/L Streak"
+                 , "W/L Streak (lagged)"
+                 # , "Previous Game's Outcome (win)"
+                 , "Temperature"
+                 , "Game +/-"
+                 , "Prior game +/-"
+                 , "Prior game FGm"
+                 , "Prior game points"
+                 , "Win %"
                  , "Monday"
                  , "Tuesday"
                  , "Wednesday"
                  , "Thursday"
                  , "Friday"
                  , "Saturday"
-                 , "Jan"
-                 , "Feb"
-                 , "Mar"
-                 , "Apr"
-                 , "Oct"
-                 , "Nov"
-                 , "Dec"
+                 # , "Jan"
+                 # , "Feb"
+                 # , "Mar"
+                 # , "Apr"
+                 # , "Oct"
+                 # , "Nov"
+                 # , "Dec"
   )) %>% 
   filter(var!= "Intercept") %>% 
   arrange(desc(estimate))
@@ -824,9 +842,16 @@ m4.out %>%
                      , xmax = conf.high
                      , y = reorder(var, estimate), col = sig), size = 2) +
   geom_label(aes(x = estimate, y = reorder(var, estimate)
-                 , label = paste0(round(estimate, 2)*100, "%"), col = sig)) +
-  scale_color_manual(values = c("#BA0C2F", "#002F6C", "#6C6463"))
-
+                 , label = paste0(round(estimate, 2)*100, "%"), col = sig), size =7) +
+  scale_color_manual(values = c("#BA0C2F", "#002F6C", "#6C6463")) + 
+  scale_x_continuous(labels = scales::percent_format()) +
+  theme_minimal() +
+  theme(legend.position = "NA"
+        , text = element_text(size = 20))  +
+  labs(x = "% Change in average attendance", y = ""
+       , title = "Predicted attendance after accounting for game, season, and month variation"
+       , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
+  ) 
 
 # vary intercepts vary slopes
 m5 <- stan_glmer(log_att ~
