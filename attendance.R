@@ -38,10 +38,10 @@ month <- rep(c("october", "november", "december", "january", "february", "march"
 
 # loops to get data
 get_urls <- function(year) {
-  
-  url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year, 
+
+  url <- paste0("https://www.basketball-reference.com/leagues/NBA_", year,
                 "_games-", month, ".html")
-  
+
 }
 
 urls <- get_urls(year)
@@ -66,44 +66,44 @@ urls2 <- urls[c(-1 # 2011-2012 season started in December, this is October
 # actuall get the data
 get_data <- function(urls2) {
   webpage <- read_html(urls2)
-  
-  col_names <- webpage %>% 
-    html_nodes("table#schedule > thead > tr > th") %>% 
-    html_attr("data-stat")    
+
+  col_names <- webpage %>%
+    html_nodes("table#schedule > thead > tr > th") %>%
+    html_attr("data-stat")
   col_names <- c("game_id", col_names)
-  
-  dates <- webpage %>% 
-    html_nodes("table#schedule > tbody > tr > th") %>% 
+
+  dates <- webpage %>%
+    html_nodes("table#schedule > tbody > tr > th") %>%
     html_text()
   dates <- dates[dates != "Playoffs"]
-  
-  game_id <- webpage %>% 
+
+  game_id <- webpage %>%
     html_nodes("table#schedule > tbody > tr > th") %>%
     html_attr("csk")
   game_id <- game_id[!is.na(game_id)]
-  
-  data <- webpage %>% 
-    html_nodes("table#schedule > tbody > tr > td") %>% 
+
+  data <- webpage %>%
+    html_nodes("table#schedule > tbody > tr > td") %>%
     html_text() %>%
     matrix(ncol = length(col_names) - 2, byrow = TRUE)
-  
+
   month_df <- as.data.frame(cbind(game_id, dates, data), stringsAsFactors = FALSE)
   names(month_df) <- col_names
-  
-  month_df <- month_df %>% 
+
+  month_df <- month_df %>%
     filter(home_team_name == "Washington Wizards" | visitor_team_name == "Washington Wizards") %>%
     mutate(attendance = as.numeric(gsub(",", "", attendance))
            , date_game = mdy(date_game)
            , home_pts = as.numeric(home_pts)
            , visitor_pts = as.numeric(visitor_pts)
-    )  
-  
+    )
+
 }
 
 # bring all seasons together into a list
 nba_list <- NULL
 for(i in 1:length(urls2)){
-  tmp <- get_data(urls2[i]) 
+  tmp <- get_data(urls2[i])
   nba_list[[i]] <- tmp
 }
 
@@ -112,22 +112,22 @@ nbastart_dat <- do.call(rbind, nba_list)
 
 # glimpse(nbastart_dat)
 
-nbastart_dat2 <- nbastart_dat %>% 
+nbastart_dat2 <- nbastart_dat %>%
   mutate(result = case_when(visitor_team_name == "Washington Wizards" & visitor_pts > home_pts ~ "W"
                             , home_team_name == "Washington Wizards" & home_pts > visitor_pts ~ "W"
                             , visitor_team_name == "Washington Wizards" & visitor_pts < home_pts ~ "L"
                             , home_team_name == "Washington Wizards" & home_pts < visitor_pts ~ "L"
-  )) %>% 
+  )) %>%
   select(-game_remarks)
 
 
 # update fivethirtyeight data
-five38_wiz <- five38 %>% filter(season %in% year) %>% 
+five38_wiz <- five38 %>% filter(season %in% year) %>%
   filter(team1 == "WAS" | team2 == "WAS")
 
 
-merge_wiz <- five38_wiz %>% 
-  left_join(nbastart_dat2, by = c("date" = "date_game")) 
+merge_wiz <- five38_wiz %>%
+  left_join(nbastart_dat2, by = c("date" = "date_game"))
 
 
 # calculate streaks
@@ -143,20 +143,20 @@ get_streaks <- function(vec){
   return(x)
 }
 
-streaks <- get_streaks(merge_wiz$result[is.na(merge_wiz$result)!=T]) %>% 
+streaks <- get_streaks(merge_wiz$result[is.na(merge_wiz$result)!=T]) %>%
   mutate(streak = streak * ifelse(result == "W", 1, -1)
   )
 
 
 # clean thing up a bit
-merge_wiz2 <- merge_wiz %>% filter(is.na(result)!=T) %>% 
+merge_wiz2 <- merge_wiz %>% filter(is.na(result)!=T) %>%
   bind_cols(select(
     streaks
-    ,streak)) %>% 
-  filter(home_team_name== "Washington Wizards" 
-                                   & attendance>0 ) %>% 
-  mutate(log_att = log(attendance)) %>% 
-  left_join(dat_wiz, by = c("date" = "dateGame")) %>% 
+    ,streak)) %>%
+  filter(home_team_name== "Washington Wizards"
+                                   & attendance>0 ) %>%
+  mutate(log_att = log(attendance)) %>%
+  left_join(dat_wiz, by = c("date" = "dateGame")) %>%
   select(-c("carm-elo1_pre":"raptor_prob2"), -playoff
          , -neutral
          , -importance
@@ -166,37 +166,37 @@ merge_wiz2 <- merge_wiz %>% filter(is.na(result)!=T) %>%
          , -urlTeamSeasonLogo
          , -idGame
          , -hasVideo
-  ) 
+  )
 
 
 # add in season win percentage
-win_pct <- merge_wiz %>% 
-  mutate(win = ifelse(result == "W", 1, 0)) %>% 
+win_pct <- merge_wiz %>%
+  mutate(win = ifelse(result == "W", 1, 0)) %>%
   filter(attendance>0) %>% group_by(season) %>%
   mutate(winpct = cummean(win)) %>% select(season, date, winpct, win)
 
 # add in streaks
 merge_wiz3 <- merge_wiz2 %>%
   mutate(month = month(date, label = T)
-         , day = wday(date, label =T)) %>% 
+         , day = wday(date, label =T)) %>%
   left_join(select(win_pct, date, win, winpct))
 
 
 
-# weather data from NOAA 
+# weather data from NOAA
 # https://www.ncdc.noaa.gov/cdo-web/datasets#GHCND
 weather_dat <- readr::read_csv("2894148.csv")
 
-merge_wiz4 <- merge_wiz3 %>% 
-  left_join(weather_dat, by = c("date" = "DATE")) %>% 
-  mutate(spread = home_pts-visitor_pts) %>% 
-  bind_cols(fastDummies::dummy_cols(.$day)) %>% 
-  select(-'.data') %>% 
-  bind_cols(fastDummies::dummy_cols(.$month)) %>% 
-  select(-'.data') %>% 
+merge_wiz4 <- merge_wiz3 %>%
+  left_join(weather_dat, by = c("date" = "DATE")) %>%
+  mutate(spread = home_pts-visitor_pts) %>%
+  bind_cols(fastDummies::dummy_cols(.$day)) %>%
+  select(-'.data') %>%
+  bind_cols(fastDummies::dummy_cols(.$month)) %>%
+  select(-'.data') %>%
   filter(team2!="NJN"
          & typeSeason == "Regular Season"
-  ) 
+  )
 
 
 
@@ -218,7 +218,7 @@ merge_wiz4 <- merge_wiz3 %>%
 #        , title = "Overall average attendance"
 #        , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
 #   )
-# 
+#
 # merge_wiz %>%
 #   filter(home_team_name== "Washington Wizards"
 #          & attendance!=0
@@ -237,71 +237,71 @@ merge_wiz4 <- merge_wiz3 %>%
 
 # overall average-----
 
-merge_wiz4 %>% 
+merge_wiz4 %>%
   filter(home_team_name== "Washington Wizards"
          & attendance!=0
          # & season!=2021
-         
-  ) %>% 
-  summarize(mean = mean(attendance, na.rm=T)) %>% 
+
+  ) %>%
+  summarize(mean = mean(attendance, na.rm=T)) %>%
   mutate(perct = mean/20476)
 
 
 # by season-----
 
-merge_wiz %>% 
-  filter(home_team_name== "Washington Wizards" 
+merge_wiz %>%
+  filter(home_team_name== "Washington Wizards"
          & attendance!=0
          # & season!=2021
-  ) %>% 
-  group_by(season) %>% 
+  ) %>%
+  group_by(season) %>%
   summarize(mean = mean(attendance, na.rm=T), median = median(attendance, na.rm=T), q25 = quantile(attendance, .25, na.rm=T), q75 = quantile(attendance, .75, na.rm=T)
             , perct = mean/20476
   ) %>% mutate(mean_perct = mean(perct))
 
 
 # this season vs other seasons up to this point----
-merge_wiz %>% 
-  filter(home_team_name== "Washington Wizards" 
+merge_wiz4 %>%
+  filter(home_team_name== "Washington Wizards"
          & month %in% c("Oct", "Nov", "Dec", "Jan", "Feb")
          # & attendance!=0
          # & season!=2021
-  ) %>% 
-  mutate(this_season = ifelse(season == "2022", "This Season", "Other Seasons")) %>% 
-  group_by(this_season) %>% 
+  ) %>%
+  mutate(this_season = ifelse(season == "2022", "This Season", "Other Seasons")) %>%
+  group_by(this_season) %>%
   summarize(mean = mean(attendance, na.rm=T), median = median(attendance, na.rm=T), q25 = quantile(attendance, .25, na.rm=T), q75 = quantile(attendance, .75, na.rm=T)
             , perct = mean/20476
-  ) 
+  )
 
-merge_wiz4 %>% 
-  filter(home_team_name== "Washington Wizards" 
+merge_wiz4 %>%
+  filter(home_team_name== "Washington Wizards"
          & month %in% c("Oct", "Nov", "Dec", "Jan", "Feb")
          # & attendance!=0
          # & season!=2021
-  ) %>% 
-  group_by(season) %>% 
+  ) %>%
+  group_by(season) %>%
   summarize(mean = mean(attendance, na.rm=T), median = median(attendance, na.rm=T), q25 = quantile(attendance, .25, na.rm=T), q75 = quantile(attendance, .75, na.rm=T)
             , perct = mean/20476
-  ) 
+  )
 
 # for this season only-----
 merge_wiz4 %>% filter(season=="2022") %>%
-  mutate(perct = attendance/20476) %>% 
+  mutate(perct = attendance/20476) %>%
   select(date, team1, team2, attendance, perct) %>% View()
 
-merge_wiz4 %>% 
+merge_wiz4 %>%
   filter(season=="2022") %>%
-  mutate(perct = attendance/20476) %>% 
-  select(date, team1, team2, attendance, perct) %>% 
-  tail(n=10) %>% 
+  mutate(perct = attendance/20476) %>%
+  select(date, team1, team2, attendance, perct) %>%
+  tail(n=10) %>%
   summarize(mean=mean(perct))
 
 
-p1 <- merge_wiz4 %>% 
-  filter(home_team_name== "Washington Wizards" 
+p1 <- merge_wiz4 %>%
+  filter(home_team_name== "Washington Wizards"
          & attendance!=0
          & season!=2021
-  ) %>% 
+  ) %>%
   ggplot() +
   geom_line(aes(x = date, y = attendance, group = season), alpha = 0.3) +
   geom_smooth(aes(x = date, y = attendance, group = season), se = F, col = "#002b5c") +
@@ -311,34 +311,34 @@ p1 <- merge_wiz4 %>%
   theme_minimal() +
   theme(panel.spacing = unit(0, 'lines')
         , text = element_text(size = 20)
-        
+
   ) +
   labs(x = "", y = ""
        , title = "Attendance by Season"
        , subtitle = "The dark lines show a rolling average\n2021 has been removed since there were only seven home games with limited seating"
        , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
-       
+
   )
 
 ggsave("Attendance 2011-2022.png", p1, width = 14, height = 7, dpi = 300, type = 'cairo')
 
 # attendance percentage
-p2 <- merge_wiz4 %>% 
-  filter(home_team_name== "Washington Wizards" 
+p2 <- merge_wiz4 %>%
+  filter(home_team_name== "Washington Wizards"
          & attendance!=0
          # & season!=2021
-  ) %>% 
-  group_by(season) %>% 
+  ) %>%
+  group_by(season) %>%
   summarize(med = mean(attendance, na.rm=T)
             , perct = med/20476
-  ) %>% 
-  ungroup() %>% 
+  ) %>%
+  ungroup() %>%
   ggplot(aes(x = factor(season), y = perct , group = factor(season))) +
   geom_segment( aes(x=factor(season) ,xend=factor(season), y=0, yend=perct), color="grey") +
   geom_point(size=18,  color="#002b5c", shape = 21, stroke = 5, fill = "white") +
   geom_text(aes(label = paste0(round(perct*100, 0), "%"))
             , check_overlap = TRUE
-            , fontface = "bold", size = 6, col = "black") +  
+            , fontface = "bold", size = 6, col = "black") +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1)) +
   theme_minimal() +
   theme( text = element_text(size = 20)) +
@@ -352,15 +352,15 @@ ggsave("Attendance Percentage.png", p2, width = 14, height = 7, dpi = 300, type 
 
 
 # attendance by team
-# 
-# merge_wiz3 %>% 
-#   filter(home_team_name== "Washington Wizards" 
+#
+# merge_wiz3 %>%
+#   filter(home_team_name== "Washington Wizards"
 #          & attendance!=0
 #          & season!=2021
-#   ) %>% 
-#   group_by(team2) %>% 
-#   mutate(med = median(attendance, na.rm=T)) %>% 
-#   ungroup() %>% 
+#   ) %>%
+#   group_by(team2) %>%
+#   mutate(med = median(attendance, na.rm=T)) %>%
+#   ungroup() %>%
 #   ggplot(aes(x = reorder(team2,med), y = attendance , group = team2)) +
 #   geom_jitter(alpha = 0.3, width = .2) +
 #   geom_boxplot(fill = NA) +
@@ -374,25 +374,25 @@ ggsave("Attendance Percentage.png", p2, width = 14, height = 7, dpi = 300, type 
 #        , title = "Attendance by Team"
 #        , subtitle = "2021 has been removed from the figure since there were only seven home games and limited seating was made available"
 #        , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
-#        
+#
 #   )
 
-p3 <- merge_wiz4 %>% 
-  filter(home_team_name== "Washington Wizards" 
+p3 <- merge_wiz4 %>%
+  filter(home_team_name== "Washington Wizards"
          & attendance!=0
          & season!=2021
          & team2!= "NJN"
-  ) %>% 
+  ) %>%
   mutate(team2 = fct_reorder(team2, attendance, mean)
-  ) %>% 
-  group_by(team2) %>% 
+  ) %>%
+  group_by(team2) %>%
   summarize(mean = mean(attendance, na.rm = TRUE)
             , sd = sd(attendance, na.rm = TRUE)
             , n = n()) %>%
   mutate(se = sd / sqrt(n)
          , lower = mean - qt(1 - (0.05 / 2), n - 1) * se
-         , upper = mean + qt(1 - (0.05 / 2), n - 1) * se) %>% 
-  ungroup() %>% 
+         , upper = mean + qt(1 - (0.05 / 2), n - 1) * se) %>%
+  ungroup() %>%
   ggplot() +
   geom_linerange(aes(x = team2, ymin = lower, ymax = upper , group = team2, col = ifelse(lower>=17014, "Above Average", "Below Average")), size = 1) +
   geom_point(aes(x = team2, y = mean, col = ifelse(lower>=17014, "Above Average", "Below Average")), size = 4, shape = 19) +
@@ -407,7 +407,7 @@ p3 <- merge_wiz4 %>%
        , title = "Average Attendance by Team"
        , subtitle = "Red denotes teams who consistently have above average attendance"
        , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
-       
+
   )
 
 ggsave("Attendance by Team.png", p3, width = 16, height = 7, dpi = 300, type = 'cairo')
@@ -416,20 +416,20 @@ ggsave("Attendance by Team.png", p3, width = 16, height = 7, dpi = 300, type = '
 
 
 # attendance by day
-merge_wiz4 %>% 
-  filter(home_team_name== "Washington Wizards" 
+merge_wiz4 %>%
+  filter(home_team_name== "Washington Wizards"
          & attendance!=0
          & season!=2021
          & team2!= "NJN"
-  ) %>% 
-  group_by(day, month) %>% 
+  ) %>%
+  group_by(day, month) %>%
   summarize(mean = mean(attendance, na.rm = TRUE)
             , sd = sd(attendance, na.rm = TRUE)
             , n = n()) %>%
   mutate(se = sd / sqrt(n)
          , lower = mean - qt(1 - (0.05 / 2), n - 1) * se
-         , upper = mean + qt(1 - (0.05 / 2), n - 1) * se) %>% 
-  ungroup() %>% 
+         , upper = mean + qt(1 - (0.05 / 2), n - 1) * se) %>%
+  ungroup() %>%
   ggplot() +
   geom_linerange(aes(x = day, ymin = lower, ymax = upper , group = day, col = ifelse(lower>=16890, "Above Average", "Below Average")), size = 1) +
   geom_point(aes(x = day, y = mean, col = ifelse(lower>=17014, "Above Average", "Below Average")), size = 4, shape = 19) +
@@ -444,18 +444,18 @@ merge_wiz4 %>%
        , title = "Average Attendance by Day and Month"
        , subtitle = "Red denotes teams who consistently have above average attendance"
        , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
-       
-  ) 
 
-p4 <- merge_wiz4 %>% 
-  filter(home_team_name== "Washington Wizards" 
+  )
+
+p4 <- merge_wiz4 %>%
+  filter(home_team_name== "Washington Wizards"
          & attendance!=0
          & season!=2021
-  ) %>% 
-  group_by(day, month) %>% 
+  ) %>%
+  group_by(day, month) %>%
   mutate(mean_att = gmodels::ci(attendance, na.rm=T)[2]
-         , colors_att = ifelse(mean_att >=16890, "Above", "Below")) %>% 
-  ungroup() %>% 
+         , colors_att = ifelse(mean_att >=16890, "Above", "Below")) %>%
+  ungroup() %>%
   ggplot(aes(x = day, y = attendance , group = day)) +
   stat_summary(fun.data = "mean_cl_boot", size = 2, col = "#6C6463") +
   scale_y_continuous(labels = scales::comma_format()) +
@@ -468,37 +468,37 @@ p4 <- merge_wiz4 %>%
        , title = "Attendance by Month and Day"
        # , subtitle = "2021 has been removed from the figure since there were only seven home games and limited seating was made available"
        , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
-       
-  ) 
+
+  )
 ggsave("Attendance by day and month.png", p4, width = 16, height = 10, dpi = 300, type = 'cairo')
 
 # which games/teams had the most attendance
-merge_wiz4 %>% 
-  filter(season!=2021) %>% 
-  group_by(visitor_team_name, date) %>% 
+merge_wiz4 %>%
+  filter(season!=2021) %>%
+  group_by(visitor_team_name, date) %>%
   summarize(max = max(attendance, na.rm=T)
             , perct = max/20476
-  ) %>% 
-  arrange(desc(max)) %>% 
-  head(n = 50) %>% 
-  ungroup() %>% 
-  group_by(visitor_team_name) %>% 
-  count() %>% 
-  arrange(desc(n)) %>% 
+  ) %>%
+  arrange(desc(max)) %>%
+  head(n = 50) %>%
+  ungroup() %>%
+  group_by(visitor_team_name) %>%
+  count() %>%
+  arrange(desc(n)) %>%
   print(n=20)
 
 # bottom
-merge_wiz3 %>% 
-  filter(season!=2021) %>% 
-  group_by(visitor_team_name, date) %>% 
+merge_wiz3 %>%
+  filter(season!=2021) %>%
+  group_by(visitor_team_name, date) %>%
   summarize(max = max(attendance, na.rm=T)
             , perct = max/20476
-  ) %>% 
-  arrange(desc(max)) %>% 
+  ) %>%
+  arrange(desc(max)) %>%
   tail(n = 50) %>% print(n=50)
 
-merge_wiz3 %>% 
-  group_by(date) %>% 
+merge_wiz3 %>%
+  group_by(date) %>%
   mutate(max = max(attendance, na.rm=T)
          , perct = max/20476
   ) %>% group_by(season) %>% summarize(mean = mean(perct))
@@ -510,8 +510,8 @@ cors <- cor(merge_wiz3[ , purrr::map_lgl(merge_wiz3, is.numeric)] # just keep th
 corrplot::corrplot(cors) # correlations
 
 # win percentage overall------
-merge_wiz4 %>% 
-  filter(home_team_name== "Washington Wizards" 
+merge_wiz4 %>%
+  filter(home_team_name== "Washington Wizards"
          & attendance!=0
          & season!=2021
   ) %>% ggplot(aes(x = winpct, y = attendance)) +
@@ -519,19 +519,53 @@ merge_wiz4 %>%
   geom_smooth(method = "lm", se = F, col = "#6C6463")
 
 # by team
-merge_wiz4 %>% 
-  filter(home_team_name== "Washington Wizards" 
+merge_wiz4 %>%
+  filter(home_team_name== "Washington Wizards"
          & attendance!=0
          & season!=2021
   ) %>% ggplot(aes(x = winpct, y = attendance)) +
   geom_point(size = 3, shape = 21, stroke = 2, fill = "white", col = "#002F6C") +
-  geom_smooth(method = "lm", se = F, col = "#6C6463") + 
+  geom_smooth(method = "lm", se = F, col = "#6C6463") +
+  scale_y_continuous(labels = scales::comma_format()) +
+  scale_x_continuous(labels = scales::percent_format()) +
   facet_wrap(~team2) +
-  ggpubr::stat_cor(aes(label = ..r.label..), label.x = .6, label.y = 12000)
+  ggpubr::stat_cor(aes(label = ..r.label..), label.x = .6, label.y = 12000) +
+  theme_minimal() +
+  theme( text = element_text(size = 20)) +
+  labs(x = "", y = ""
+       , title = "Attendance and Win Percentage by Team"
+       # , subtitle = "2021 has been removed from the figure since there were only seven home games and limited seating was made available"
+       , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
+
+  )
+
+# win by attendance and date
+merge_wiz4 %>%
+  filter(home_team_name== "Washington Wizards"
+         & attendance!=0
+         & season!=2021
+  ) %>%
+  select(date, attendance, winpct) %>%
+  pivot_longer(cols = c(attendance, winpct)) %>%
+  ggplot() +
+  geom_smooth(aes(x = date, y = value), col = "#002F6C", se = F) +
+  facet_grid(~name)
+  scale_y_continuous(labels = scales::comma_format()) +
+  scale_x_continuous(labels = scales::percent_format()) +
+  facet_wrap(~team2) +
+  ggpubr::stat_cor(aes(label = ..r.label..), label.x = .6, label.y = 12000) +
+  theme_minimal() +
+  theme( text = element_text(size = 20)) +
+  labs(x = "", y = ""
+       , title = "Attendance and Win Percentage by Team"
+       # , subtitle = "2021 has been removed from the figure since there were only seven home games and limited seating was made available"
+       , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
+
+  )
 
 
 # basic linear model
-m1 <- stan_glm(log_att ~ 
+m1 <- stan_glm(log_att ~
                    elo_prob1
                  + quality
                  + lag(log_att)
@@ -573,7 +607,7 @@ hist(posterior_predict(m1))
 
 
 # basic linear model with covariates, not a great model
-m2 <- stan_glm(log_att ~ 
+m2 <- stan_glm(log_att ~
                  elo_prob1
                + quality
                + lag(log_att)
@@ -593,7 +627,7 @@ m2 <- stan_glm(log_att ~
                + day
                + month
                # + (1|team2)
-               + team2 
+               + team2
                +   factor(season)
                # + (1 | season)
                # + (day | month)
@@ -620,7 +654,7 @@ sjPlot::plot_model(m2
 
 
 # basic linear model with covariates
-m3 <- stan_glmer(log_att ~ 
+m3 <- stan_glmer(log_att ~
                  elo_prob1
                + quality
                # + lag(log_att)
@@ -686,9 +720,9 @@ sjPlot::plot_model(m3
 
 
 
-# individual days, month fixed effects 
+# individual days, month fixed effects
 # model I like best
-m4 <- stan_glmer(log_att ~ 
+m4 <- stan_glmer(log_att ~
                    elo_prob1
                  + quality
                  # + lag(log_att)
@@ -730,7 +764,7 @@ ggplot(posteriors4, aes(x = winpct)) +
 
 performance::model_performance(m4)
 
-# 
+#
 # check with poisson model
 # m2_poisson <- stan_glmer(attendance ~
 #                               elo_prob1
@@ -771,8 +805,8 @@ performance::model_performance(m4)
 
 pp_check(m4, plotfun = "hist", nreps = 5)
 # the model is a good fit to the data based on generated data yrep
-# from the posterior predictive distribution. 
-# It looks a lot like the observed data y. 
+# from the posterior predictive distribution.
+# It looks a lot like the observed data y.
 # That is, given y, the yrep we generate appears plausible
 
 # check the distribution of a test quantity compared to the value of the quantity in the observed data
@@ -795,7 +829,7 @@ sjPlot::plot_model(m4
                    , value.size = 3)
 
 
-m4.out <- m4 %>% broom.mixed::tidy(conf.int = TRUE) %>% 
+m4.out <- m4 %>% broom.mixed::tidy(conf.int = TRUE) %>%
   mutate(var = c("Intercept"
                  , "538 Win Prob."
                  , "538 'Quality' Rating"
@@ -830,21 +864,21 @@ m4.out <- m4 %>% broom.mixed::tidy(conf.int = TRUE) %>%
                  # , "Oct"
                  # , "Nov"
                  # , "Dec"
-  )) %>% 
-  filter(var!= "Intercept") %>% 
+  )) %>%
+  filter(var!= "Intercept") %>%
   arrange(desc(estimate))
 
-m4.out %>% 
+m4.out %>%
   mutate(sig = case_when(conf.low<0 & conf.high>0 ~ "Too Noisy"
                          , conf.low<0 & conf.high<0 ~ "Negative"
-                         , conf.low>0 & conf.high>0 ~ "Positive")) %>% 
+                         , conf.low>0 & conf.high>0 ~ "Positive")) %>%
   ggplot()+
   geom_linerange(aes(xmin = conf.low
                      , xmax = conf.high
                      , y = reorder(var, estimate), col = sig), size = 2) +
   geom_label(aes(x = estimate, y = reorder(var, estimate)
                  , label = paste0(round(estimate, 2)*100, "%"), col = sig), size =7) +
-  scale_color_manual(values = c("#BA0C2F", "#002F6C", "#6C6463")) + 
+  scale_color_manual(values = c("#BA0C2F", "#002F6C", "#6C6463")) +
   scale_x_continuous(labels = scales::percent_format()) +
   theme_minimal() +
   theme(legend.position = "NA"
@@ -852,7 +886,7 @@ m4.out %>%
   labs(x = "% Change in average attendance", y = ""
        , title = "Average change in attedance after\naccounting for game, season, and month variation"
        , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
-  ) 
+  )
 
 
 posteriors4 <- insight::get_parameters(m4)
@@ -871,7 +905,7 @@ m5 <- stan_glmer(log_att ~
                  + lag(spread)
                  + plusminusTeam
                  + lag(plusminusTeam)
-                 + win 
+                 + win
                  + lag(win)
                  + fgmTeam
                  + lag(fgmTeam)
@@ -900,20 +934,20 @@ sjPlot::plot_model(m5
                    , value.size = 3)
 
 
-p5 <- plot(m5, regex_pars = "win", plotfun = "hist") + 
+p5 <- plot(m5, regex_pars = "win", plotfun = "hist") +
   scale_x_continuous(labels = scales::percent_format()) +
   theme_minimal() +
   labs(x = "% Change in average attendance", y = ""
        , title = "Predicted attendance for Saturdays"
        , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
-       
+
   )
 
 ggsave("Predicted attendance by win percentage.png", p5, width = 16, height = 7, dpi = 300, type = 'cairo')
 
 
 
-m5.out <- m5 %>% broom.mixed::tidy(conf.int = TRUE) %>% 
+m5.out <- m5 %>% broom.mixed::tidy(conf.int = TRUE) %>%
   mutate(var = c("Intercept"
                  , "538 Win Prob."
                  , "538 'Quality' Rating"
@@ -930,22 +964,22 @@ m5.out <- m5 %>% broom.mixed::tidy(conf.int = TRUE) %>%
                  , "Wiz. Points"
                  , "Win %"
                  , "Wiz. Points (previous home game)"
-                 
-  )) %>% 
-  filter(var!= "Intercept") %>% 
+
+  )) %>%
+  filter(var!= "Intercept") %>%
   arrange(desc(estimate))
 
-m5.out %>% 
+m5.out %>%
   mutate(sig = case_when(conf.low<0 & conf.high>0 ~ "Too Noisy"
                          , conf.low<0 & conf.high<0 ~ "Negative"
-                         , conf.low>0 & conf.high>0 ~ "Positive")) %>% 
+                         , conf.low>0 & conf.high>0 ~ "Positive")) %>%
   ggplot()+
   geom_linerange(aes(xmin = conf.low
                      , xmax = conf.high
                      , y = reorder(var, estimate), col = sig), size = 2) +
   geom_label(aes(x = estimate, y = reorder(var, estimate)
                  , label = paste0(round(estimate, 2)*100, "%"), col = sig), size =3) +
-  scale_color_manual(values = c("#BA0C2F", "#002F6C", "#6C6463")) + 
+  scale_color_manual(values = c("#BA0C2F", "#002F6C", "#6C6463")) +
   scale_x_continuous(labels = scales::percent_format()) +
   theme_minimal() +
   theme(legend.position = "NA"
@@ -953,11 +987,11 @@ m5.out %>%
   labs(x = "% Change in average attendance", y = ""
        , title = "Change attendance after accounting for game, season, and date variation"
        , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
-  ) 
+  )
 
 
 # Gamma distribution
-m6 <- stan_glmer(log_att ~ 
+m6 <- stan_glmer(log_att ~
                    elo_prob1
                  + quality
                  + lag(log_att)
@@ -994,7 +1028,7 @@ prior_summary(m6)
 pp_check(m6, plotfun = "hist", nreps = 5)
 
 # cluster day, month, and team by season
-m7 <- stan_glmer(log_att ~ 
+m7 <- stan_glmer(log_att ~
                      elo_prob1
                    + quality
                    # + lag(log_att)
