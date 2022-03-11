@@ -510,6 +510,27 @@ cors <- cor(merge_wiz3[ , purrr::map_lgl(merge_wiz3, is.numeric)] # just keep th
 
 corrplot::corrplot(cors) # correlations
 
+# win percentage overall------
+merge_wiz4 %>% 
+  filter(home_team_name== "Washington Wizards" 
+         & attendance!=0
+         & season!=2021
+  ) %>% ggplot(aes(x = winpct, y = attendance)) +
+  geom_point(size = 3, shape = 21, stroke = 2, fill = "white", col = "#002F6C") +
+  geom_smooth(method = "lm", se = F, col = "#6C6463")
+
+# by team
+merge_wiz4 %>% 
+  filter(home_team_name== "Washington Wizards" 
+         & attendance!=0
+         & season!=2021
+  ) %>% ggplot(aes(x = winpct, y = attendance)) +
+  geom_point(size = 3, shape = 21, stroke = 2, fill = "white", col = "#002F6C") +
+  geom_smooth(method = "lm", se = F, col = "#6C6463") + 
+  facet_wrap(~team2) +
+  ggpubr::stat_cor(aes(label = ..r.label..), label.x = .6, label.y = 12000)
+
+
 # basic linear model
 m1 <- stan_glm(log_att ~ 
                    elo_prob1
