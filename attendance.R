@@ -179,7 +179,6 @@ win_pct <- merge_wiz %>%
 merge_wiz3 <- merge_wiz2 %>%
   mutate(month = month(date, label = T)
          , day = wday(date, label =T)) %>% 
-  left_join(tm.colors, by = c("visitor_team_name" = "nameTeam")) %>% 
   left_join(select(win_pct, date, win, winpct))
 
 
@@ -241,7 +240,7 @@ merge_wiz4 <- merge_wiz3 %>%
 merge_wiz4 %>% 
   filter(home_team_name== "Washington Wizards"
          & attendance!=0
-         & season!=2021
+         # & season!=2021
          
   ) %>% 
   summarize(mean = mean(attendance, na.rm=T)) %>% 
@@ -688,23 +687,25 @@ sjPlot::plot_model(m3
 
 
 # individual days, month fixed effects 
+# model I like best
 m4 <- stan_glmer(log_att ~ 
                    elo_prob1
                  + quality
                  # + lag(log_att)
                  + streak
                  + lag(streak)
-                 # + lag(outcomeGame)
                  + TMAX
-                 # + lag(spread)
+                 + spread
+                 + lag(spread)
                  + plusminusTeam
                  + lag(plusminusTeam)
-                 # + lag(outcomeGame)
-                 # + fgmTeam
+                 + fgmTeam
                  + lag(fgmTeam)
-                 # + lag(fgaTeam)
-                 # + lag(astTeam)
-                 # + ptsTeam
+                 + fgaTeam
+                 + lag(fgaTeam)
+                 + astTeam
+                 + lag(astTeam)
+                 + ptsTeam
                  + lag(ptsTeam)
                  + winpct
                  + .data_Mon
@@ -730,47 +731,39 @@ ggplot(posteriors4, aes(x = winpct)) +
 performance::model_performance(m4)
 
 # 
-# # check with poisson model
-# m2_poisson <- stan_glmer(attendance ~ 
-#                            elo_prob1
-#                          + quality
-#                          + lag(log_att)
-#                          # + streak
-#                          # + lag(outcomeGame)
-#                          # + TMAX
-#                          # + lag(spread)
-#                          # + plusminusTeam
-#                          # + lag(plusminusTeam)
-#                          # + lag(outcomeGame)
-#                          # + fgmTeam
-#                          # + lag(fgmTeam)
-#                          # + lag(fgaTeam)
-#                          # + lag(astTeam)
-#                          # + ptsTeam
-#                          # + lag(ptsTeam)
-#                          + .data_Mon
-#                          + .data_Tue
-#                          + .data_Wed
-#                          + .data_Thu
-#                          + .data_Fri
-#                          + .data_Sat
-#                          + .data_Jan
-#                          + .data_Feb
-#                          + .data_Mar
-#                          + .data_Apr
-#                          + .data_May
-#                          + .data_Jun
-#                          + .data_Jul
-#                          + .data_Aug
-#                          + .data_Sep
-#                          + .data_Oct
-#                          + .data_Nov
-#                          + .data_Dec
-#                          + (1|season)
-#                          + (1|slugOpponent)
+# check with poisson model
+# m2_poisson <- stan_glmer(attendance ~
+#                               elo_prob1
+#                               + quality
+#                               # + lag(log_att)
+#                               + streak
+#                               + lag(streak)
+#                               + TMAX
+#                               + spread
+#                               + lag(spread)
+#                               + plusminusTeam
+#                               + lag(plusminusTeam)
+#                               + fgmTeam
+#                               + lag(fgmTeam)
+#                               + fgaTeam
+#                               + lag(fgaTeam)
+#                               + astTeam
+#                               + lag(astTeam)
+#                               + ptsTeam
+#                               + lag(ptsTeam)
+#                               + winpct
+#                               + .data_Mon
+#                               + .data_Tue
+#                               + .data_Wed
+#                               + .data_Thu
+#                               + .data_Fri
+#                               + .data_Sat
+#                               + (1|month)
+#                               + (1|season)
+#                               + (1|slugOpponent)
 #                          , family = poisson
 #                            , data = merge_wiz4
-# )
+#                               )
 # pp_check(m2_poisson, plotfun = "hist", nreps = 5)
 
 
@@ -811,10 +804,18 @@ m4.out <- m4 %>% broom.mixed::tidy(conf.int = TRUE) %>%
                  , "W/L Streak (lagged)"
                  # , "Previous Game's Outcome (win)"
                  , "Temperature"
-                 , "Game +/-"
-                 , "Prior game +/-"
-                 , "Prior game FGm"
-                 , "Prior game points"
+                 , "Point spread"
+                 , "Prior game's spread"
+                 , "FG made"
+                 , "Prior game FG made"
+                 , "FG attempts"
+                 , "Prior game FG attempts"
+                 , "Assists"
+                 , "Prior game assists"
+                 , "Total Wiz. points"
+                 , "Prior game Wiz. points"
+                 # , "Game +/-"
+                 # , "Prior game +/-"
                  , "Win %"
                  , "Monday"
                  , "Tuesday"
@@ -849,9 +850,15 @@ m4.out %>%
   theme(legend.position = "NA"
         , text = element_text(size = 20))  +
   labs(x = "% Change in average attendance", y = ""
-       , title = "Predicted attendance after accounting for game, season, and month variation"
+       , title = "Average change in attedance after\naccounting for game, season, and month variation"
        , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
   ) 
+
+
+posteriors4 <- insight::get_parameters(m4)
+
+ggplot(posteriors4, aes(x = winpct)) +
+  geom_density(fill = "#002F6C")
 
 # vary intercepts vary slopes
 m5 <- stan_glmer(log_att ~
@@ -944,7 +951,7 @@ m5.out %>%
   theme(legend.position = "NA"
         , text = element_text(size = 20))  +
   labs(x = "% Change in average attendance", y = ""
-       , title = "Predicted attendance after accounting for game, season, and date variation"
+       , title = "Change attendance after accounting for game, season, and date variation"
        , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
   ) 
 
