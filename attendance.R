@@ -1171,9 +1171,9 @@ p9 <- merge_wiz4 %>%
   geom_point(size = 3, shape = 21, stroke = 2, fill = "white", col = "#6C6463") +
   geom_smooth(method = "lm", se = F, col = "#002F6C") +
   scale_y_continuous(labels = scales::comma_format()) +
-  scale_x_continuous(labels = scales::percent_format()) +
+  scale_x_continuous(labels = scales::percent_format(), breaks = c(0.3, 0.6, 0.9)) +
   facet_wrap(~team2) +
-  ggpubr::stat_cor(aes(label = ..r.label..), label.x = .6, label.y = 12000) +
+  # ggpubr::stat_cor(aes(label = ..r.label..), label.x = .6, label.y = 12000) +
   theme_minimal() +
   theme( text = element_text(size = 20)) +
   labs(x = "", y = ""
@@ -1183,7 +1183,37 @@ p9 <- merge_wiz4 %>%
        
   )
 
-ggsave("Win pct by team.png", p9, width = 14, height = 10, dpi = 300, type = 'cairo')
+p10 <- merge_wiz4 %>%
+  filter(home_team_name== "Washington Wizards"
+         & attendance!=0
+         & season!=2021
+  ) %>% ggplot(aes(x = winpct, y = attendance)) +
+  geom_point(size = 3, shape = 21, stroke = 2, fill = "white", col = "#6C6463") +
+  geom_smooth(method = "lm", se = F, col = "#002F6C") +
+  scale_y_continuous(labels = scales::comma_format()) +
+  scale_x_continuous(labels = scales::percent_format()) +
+  # ggpubr::stat_cor(aes(label = ..r.label..), label.x = .6, label.y = 12000) +
+  theme_minimal() +
+  theme( text = element_text(size = 20)) +
+  labs(x = "", y = ""
+       , title = "Attendance and Win Percentage by Team"
+       # , subtitle = "2021 has been removed from the figure since there were only seven home games and limited seating was made available"
+       # , caption = "wizardspoints.substack.com\ndata: basketball-reference.com"
+       
+  )
+
+
+p9_p10 <- cowplot::plot_grid(plotlist = list(p10, p9)
+                            , nrow = 2
+                            , ncol = 1
+                            , label_size = 14
+                            , label_fontface = "plain"
+                            , label_fontfamily = "Corbel")
+
+
+ggsave("Win pct by team and overall by winpct.png", p9_p10, width = 14, height = 20, dpi = 300, type = 'cairo')
+
+ggsave("Win pct by team.png", p9, width = 14, height = 1, dpi = 300, type = 'cairo')
 
 
 # win by attendance and date
