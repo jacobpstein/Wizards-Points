@@ -1,6 +1,6 @@
 # Wizards-Points
 
-A repo for random Washington Wizards data explorations related to the wizardspoints.substack.com newsletter.
+A repo for random Washington Wizards data explorations related to the [wizardspoints.substack.com](https://wizardspoints.substack.com) newsletter.
 
 **Wizards Participation Awards** [post](https://wizardspoints.substack.com/p/wizards-participation-awards)
 
