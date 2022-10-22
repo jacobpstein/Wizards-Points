@@ -2,6 +2,8 @@
 
 A repo for random Washington Wizards data explorations related to the [wizardspoints.substack.com](https://wizardspoints.substack.com) newsletter.
 
+**A guide to the Washington Wizards** [post](https://wizardspoints.substack.com/p/a-guide-to-the-washington-wizards)
+
 **Wizards Participation Awards** [post](https://wizardspoints.substack.com/p/wizards-participation-awards)
 
 **Mystics Points** [post](https://wizardspoints.substack.com/p/mystics-points), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/mystics%20analysis.R)
