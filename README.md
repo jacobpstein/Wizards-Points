@@ -2,6 +2,8 @@
 
 A repo for random Washington Wizards data explorations related to the [wizardspoints.substack.com](https://wizardspoints.substack.com) newsletter.
 
+**If the Wizards are the ones working so hard, why am I so tired?s** [post](https://wizardspoints.substack.com/p/if-the-wizards-are-working-so-hard), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/lineups.R)
+
 **A guide to the Washington Wizards** [post](https://wizardspoints.substack.com/p/a-guide-to-the-washington-wizards)
 
 **Wizards Participation Awards** [post](https://wizardspoints.substack.com/p/wizards-participation-awards)
