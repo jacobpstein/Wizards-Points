@@ -2,6 +2,10 @@
 
 A repo for random Washington Wizards data explorations related to the [wizardspoints.substack.com](https://wizardspoints.substack.com) newsletter.
 
+**Kristaps Porziņģis is making the Wizards fun** [post](https://wizardspoints.substack.com/p/kristaps-porzingis-is-making-the), (code)[https://github.com/jacobpstein/Wizards-Points/blob/main/KP%20and%20fouls.R]
+
+**In and Out for the Wizards** [post](https://wizardspoints.substack.com/p/in-and-out-for-the-wizards)
+
 **If the Wizards are the ones working so hard, why am I so tired?s** [post](https://wizardspoints.substack.com/p/if-the-wizards-are-working-so-hard), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/lineups.R)
 
 **A guide to the Washington Wizards** [post](https://wizardspoints.substack.com/p/a-guide-to-the-washington-wizards)
