@@ -2,7 +2,9 @@
 
 A repo for random Washington Wizards data explorations related to the [wizardspoints.substack.com](https://wizardspoints.substack.com) newsletter.
 
-**Kristaps Porziņģis is making the Wizards fun** [post](https://wizardspoints.substack.com/p/kristaps-porzingis-is-making-the), (code)[https://github.com/jacobpstein/Wizards-Points/blob/main/KP%20and%20fouls.R]
+**Mapping out the Wizards Landscape** [post](https://wizardspoints.substack.com/p/mapping-out-the-wizards-landscape), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/defensive_offensive_rating_by_player.R)
+
+**Kristaps Porziņģis is making the Wizards fun** [post](https://wizardspoints.substack.com/p/kristaps-porzingis-is-making-the), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/KP%20and%20fouls.R)
 
 **In and Out for the Wizards** [post](https://wizardspoints.substack.com/p/in-and-out-for-the-wizards)
 
