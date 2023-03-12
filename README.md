@@ -2,6 +2,10 @@
 
 A repo for random Washington Wizards data explorations related to the [wizardspoints.substack.com](https://wizardspoints.substack.com) newsletter.
 
+**The Wizards are a Reliable Basketball Team** [post](https://wizardspoints.substack.com/p/the-wizards-are-a-very-reliable-basketball?sd=pf), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/quarter-to-quarter%20shooting.R)
+
+**Are the Wizards Getting Better?** [post](https://wizardspoints.substack.com/p/are-the-wizards-getting-better), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/three%20pointers%20over%20time.R)
+
 **Mapping out the Wizards Landscape** [post](https://wizardspoints.substack.com/p/mapping-out-the-wizards-landscape), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/defensive_offensive_rating_by_player.R)
 
 **Kristaps Porziņģis is making the Wizards fun** [post](https://wizardspoints.substack.com/p/kristaps-porzingis-is-making-the), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/KP%20and%20fouls.R)
