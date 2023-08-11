@@ -2,6 +2,8 @@
 
 A repo for random Washington Wizards data explorations related to the [wizardspoints.substack.com](https://wizardspoints.substack.com) newsletter.
 
+**How much does the bench matter?** [code](https://github.com/jacobpstein/value_of_a_bench)
+
 **The Wizards are a Reliable Basketball Team** [post](https://wizardspoints.substack.com/p/the-wizards-are-a-very-reliable-basketball?sd=pf), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/quarter-to-quarter%20shooting.R)
 
 **Are the Wizards Getting Better?** [post](https://wizardspoints.substack.com/p/are-the-wizards-getting-better), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/three%20pointers%20over%20time.R)
