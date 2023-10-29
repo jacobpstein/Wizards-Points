@@ -2,6 +2,8 @@
 
 A repo for random Washington Wizards data explorations related to the [wizardspoints.substack.com](https://wizardspoints.substack.com) newsletter.
 
+**Odds and Ends**[post](https://wizardspoints.substack.com/p/odds-and-ends), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/deni%20explore.R)
+
 **What's the deal with players scoring so many points against the Wizards?** [post](https://wizardspoints.substack.com/p/whats-the-deal-with-players-scoring), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/wizards_killers.R)
 
 **How much does the bench matter?** [post](https://wizardspoints.substack.com/p/how-much-does-the-bench-matter), [code](https://github.com/jacobpstein/value_of_a_bench)
