@@ -2,6 +2,8 @@
 
 A repo for random Washington Wizards data explorations related to the [wizardspoints.substack.com](https://wizardspoints.substack.com) newsletter.
 
+**Let 'Em Cook?**[post](https://wizardspoints.substack.com/publish/post/167862707), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/getting%20minutes.R)
+
 **The WUJ of it all**[post](https://wizardspoints.substack.com/p/the-wuj-of-it-all), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/wuj.R)
 
 **Changes? Changes!**[post](https://wizardspoints.substack.com/p/changes-changes), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/Change%20over%20time.R)
