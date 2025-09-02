@@ -2,6 +2,9 @@
 
 A repo for random Washington Wizards data explorations related to the [wizardspoints.substack.com](https://wizardspoints.substack.com) newsletter.
 
+**Uncertainty in Uncertain Times**[post]([https://wizardspoints.substack.com/publish/post/167862707](https://wizardspoints.substack.com/p/uncertainty-in-uncertain-times)), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/rookie%20minutes%20model.R)
+
+
 **Let 'Em Cook?**[post](https://wizardspoints.substack.com/publish/post/167862707), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/getting%20minutes.R)
 
 **The WUJ of it all**[post](https://wizardspoints.substack.com/p/the-wuj-of-it-all), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/wuj.R)
