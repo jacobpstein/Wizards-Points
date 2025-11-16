@@ -2,6 +2,10 @@
 
 A repo for random Washington Wizards data explorations related to the [wizardspoints.substack.com](https://wizardspoints.substack.com) newsletter.
 
+**Icarus was an inside job** [post](https://substack.com/home/post/p-178444595), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/quarterly%20analysis.R)
+
+**Notes App-Type Post** [post](https://substack.com/home/post/p-174483170), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/cam_whitmore.R)
+
 **Uncertainty in Uncertain Times** [post](https://wizardspoints.substack.com/p/uncertainty-in-uncertain-times), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/rookie%20minutes%20model.R)
 
 
