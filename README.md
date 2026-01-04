@@ -2,6 +2,8 @@
 
 A repo for random Washington Wizards data explorations related to the [wizardspoints.substack.com](https://wizardspoints.substack.com) newsletter.
 
+**The Special Relativity of Bub Carrington** [post](), [R code](https://github.com/jacobpstein/Wizards-Points/blob/main/who_has_improved.R), [Stan code](https://github.com/jacobpstein/Wizards-Points/blob/main/who_has_improved.stan)
+
 **Icarus was an inside job** [post](https://substack.com/home/post/p-178444595), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/quarterly%20analysis.R)
 
 **Notes App-Type Post** [post](https://substack.com/home/post/p-174483170), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/cam_whitmore.R)
