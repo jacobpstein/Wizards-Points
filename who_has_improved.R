@@ -1,21 +1,9 @@
-#
-#
-#
-#
-#
+# This file pulls data to look at Bub Carrington's three point shooting
+# R version 4.4.2 (2024-10-31)
+# Platform: aarch64-apple-darwin20
+# Running under: macOS Sequoia 15.6.1
 
-# kyshawn george is 94.9th percentile in isolation defense, with 7.9% of his defensive minutes coming in isolation situations and opponents shooting 18.2%
-# https://www.nba.com/stats/players/isolation?TypeGrouping=defensive&dir=D&sort=PERCENTILE
-
-# George is 79.8th percentile in defending off screens, with oppoents scoring 33% of the time when he is defending off a screen. 
-
-# He has recoverd 17 loose balls, including 9 on defense, which is a team highest
-# https://www.nba.com/stats/players/hustle?PerMode=Totals
-
-
-# bub leads the team in loose balls recovered at 18
-# https://www.nba.com/stats/players/hustle?PerMode=Totals&dir=D&sort=LOOSE_BALLS_RECOVERED
-
+# load libraries
 library(tidyverse)
 library(hoopR)
 library(rstan)
@@ -23,10 +11,13 @@ library(tidybayes)
 library(slider)
 library(ggtext)
 
-
+# set up
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 
+set.seed(202)
+
+# set up Wiz id
 wizards_id <- 1610612764
 
 
