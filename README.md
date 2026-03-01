@@ -2,7 +2,7 @@
 
 A repo for random Washington Wizards data explorations related to the [wizardspoints.substack.com](https://wizardspoints.substack.com) newsletter.
 
-**Veteran Presence of Mind**[post](), [R code](https://github.com/jacobpstein/Wizards-Points/blob/main/veteran_effect.R), [Model](https://github.com/jacobpstein/Wizards-Points/blob/main/veteran_effect.stan)
+**Veteran Presence of Mind** [post](https://wizardspoints.substack.com/p/veteran-presence-of-mind), [R code](https://github.com/jacobpstein/Wizards-Points/blob/main/veteran_effect.R), [Model](https://github.com/jacobpstein/Wizards-Points/blob/main/veteran_effect.stan)
 
 **They Grow Up So Fast** [post](https://wizardspoints.substack.com/p/they-grow-up-so-fast), [R code](https://github.com/jacobpstein/Wizards-Points/blob/main/growing_up.R), [Stan model](https://github.com/jacobpstein/Wizards-Points/blob/main/weight_model_tau.stan)
 
