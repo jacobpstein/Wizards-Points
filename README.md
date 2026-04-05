@@ -2,6 +2,8 @@
 
 A repo for random Washington Wizards data explorations related to the [wizardspoints.substack.com](https://wizardspoints.substack.com) newsletter.
 
+**The NBA's K-Shaped Economy** [post](), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/k_shaped_wiz.R), [Stan model](https://github.com/jacobpstein/Wizards-Points/blob/main/k_shaped_persistence.stan) 
+
 **Bam's just lucky Jamir Watkins wasn't playing** [post](https://wizardspoints.substack.com/p/bams-just-lucky-jamir-watkins-wasnt), [Python script](https://github.com/jacobpstein/Wizards-Points/blob/main/fetch_jamir_data.py) (this is annoying, but I had trouble with my usual workflow pulling data, so had to resort to python, saved the data as a .csv, and then load it into R. Is there a better way, yes, did I do it?); [R script](https://github.com/jacobpstein/Wizards-Points/blob/main/jamir_watkins.R); [Stan model](https://github.com/jacobpstein/Wizards-Points/blob/main/jamir_watkins_defense.stan); Regularized BPM chaser--[R code](https://github.com/jacobpstein/Wizards-Points/blob/main/jamir_watkins_rapm.R), [Stan mode](https://github.com/jacobpstein/Wizards-Points/blob/main/jamir_watkins_rapm.stan)
 
 **Veteran Presence of Mind** [post](https://wizardspoints.substack.com/p/veteran-presence-of-mind), [R code](https://github.com/jacobpstein/Wizards-Points/blob/main/veteran_effect.R), [Model](https://github.com/jacobpstein/Wizards-Points/blob/main/veteran_effect.stan)
