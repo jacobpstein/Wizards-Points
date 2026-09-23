@@ -1,29 +1,5 @@
 ###########################################################
-# The other 210 minutes -- single-file reproduction of the Substack post
-#
-# Fully self-contained: no _targets.R, no tar_read(), no other .R file. This
-# script fits the ratings model, the development curve, and the rookie
-# reference class from the raw data itself, builds the 2026-27 projection and
-# the two rotations, scores every lineup, runs the two backtests, and then
-# pulls the exact numbers and figures the post uses -- in that order, top to
-# bottom, one file.
-#
-# What "self-contained" does and doesn't mean here: every R function this
-# needs is defined below (copied verbatim from tank_functions.R, which is
-# this repo's normal home for them -- the project's own targets pipeline in
-# _targets.R is what stays in sync with that file day to day; this script is
-# a point-in-time flattening of it for the post). It still reads the raw
-# data CSVs already fetched into this folder (fetch_tank_data.py) and the
-# two .stan model specifications (tank_development.stan, tank_rookie.stan)
-# that already live here -- those are inputs, the same way the CSVs are, not
-# application code, so they aren't inlined as string literals.
-#
-# Runtime: this refits everything from scratch -- the RAPM ratings model
-# over ~470k stints, two Stan fits (development curve, rookie model), and
-# two more full refits for the backtests. Expect on the order of 30-60+
-# minutes depending on the machine, most of it in fit_rapm()'s
-# marginal-likelihood optimization and the four cmdstanr fits. Needs
-# cmdstanr set up and pointed at a working CmdStan install.
+# The other 210 minutes
 #
 # Session info
 # R version 4.5.3 (2026-03-11) -- "Reassured Reassurer"
@@ -44,15 +20,7 @@ library(usaidplot)
 
 
 # =============================================================================
-# Functions -- copied verbatim from tank_functions.R (this repo's normal home
-# for them, kept in sync by _targets.R day to day).
-# =============================================================================
-
-# =============================================================================
-# Tank or talent? — functions for the targets pipeline in _targets.R
-#
-# Every stage is a function of its inputs; targets decides what to rerun when
-# code, data or a .stan file changes. Nothing here reads or writes a cache.
+# Tank or talent? 
 # =============================================================================
 
 WIZARDS_ID <- 1610612764
