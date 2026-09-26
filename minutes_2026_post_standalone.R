@@ -1,42 +1,4 @@
 ###########################################################
-# The other 210 minutes -- single-file reproduction of the Substack post
-#
-# Fully self-contained: no _targets.R, no tar_read(), no other .R file. This
-# script fits the ratings model, the development curve, and the rookie
-# reference class from the raw data itself, builds the 2026-27 projection and
-# the two rotations, scores every lineup, runs the two backtests, and then
-# pulls the exact numbers and figures the post uses -- in that order, top to
-# bottom, one file.
-#
-# What "self-contained" does and doesn't mean here: every R function this
-# needs is defined below (copied verbatim from tank_functions.R, which is
-# this repo's normal home for them -- the project's own targets pipeline in
-# _targets.R is what stays in sync with that file day to day; this script is
-# a point-in-time flattening of it for the post). It still reads the raw
-# data CSVs already fetched into this folder (fetch_tank_data.py) and the
-# two .stan model specifications (tank_development.stan, tank_rookie.stan)
-# that already live here -- those are inputs, the same way the CSVs are, not
-# application code, so they aren't inlined as string literals.
-#
-# Seeding: _targets.R sets a fresh, independent random seed before each
-# stage (derived from that stage's name plus the pipeline's global seed,
-# 202), not one seed reused continuously top to bottom. A plain sequential
-# set.seed(202) at the top of a flat script drifts from that after the first
-# stage that consumes randomness, and two Stan fits deep in the pipeline
-# (the rookie model, refit inside each backtest on a smaller training
-# window) are numerically sensitive enough that a different draw can fail to
-# converge outright. stage_seed() below reproduces _targets.R's exact
-# per-stage seed (same hash, same global seed), called at each stage
-# boundary below, so this script draws the same random numbers the tracked
-# pipeline does and reproduces its results, not just its method.
-#
-# Runtime: this refits everything from scratch -- the RAPM ratings model
-# over ~470k stints, two Stan fits (development curve, rookie model), and
-# two more full refits for the backtests. Expect on the order of 30-60+
-# minutes depending on the machine, most of it in fit_rapm()'s
-# marginal-likelihood optimization and the four cmdstanr fits. Needs
-# cmdstanr set up and pointed at a working CmdStan install.
-#
 # Session info
 # R version 4.5.3 (2026-03-11) -- "Reassured Reassurer"
 # Platform: aarch64-apple-darwin20
@@ -55,11 +17,6 @@ library(ggrepel)
 library(ggbeeswarm)
 library(usaidplot)
 
-# Reproduces _targets.R's tar_option_set(seed = 202) + the per-target seed
-# targets derives from it (targets:::tar_seed_create): shake256 hash of the
-# stage's name and the global seed, truncated to a 32-bit int. Verified
-# against tar_seed_create() directly -- identical output, no targets
-# dependency needed to compute it.
 stage_seed <- function(name, global_seed = 202L) {
   secretbase::shake256(x = list(as.character(name), as.integer(global_seed)), bits = 32L, convert = NA)
 }
@@ -91,10 +48,6 @@ comma <- function(x) trimws(format(round(x), big.mark = ","))
 and_list <- function(x) if (length(x) < 2) x else paste(paste(head(x, -1), collapse = ", "), "and", tail(x, 1))
 
 
-# =============================================================================
-# Functions -- copied verbatim from tank_functions.R (this repo's normal home
-# for them, kept in sync by _targets.R day to day).
-# =============================================================================
 
 # =============================================================================
 # Tank or talent? — functions for the targets pipeline in _targets.R
