@@ -1,5 +1,41 @@
 ###########################################################
-# The other 210 minutes
+# The other 210 minutes -- single-file reproduction of the Substack post
+#
+# Fully self-contained: no _targets.R, no tar_read(), no other .R file. This
+# script fits the ratings model, the development curve, and the rookie
+# reference class from the raw data itself, builds the 2026-27 projection and
+# the two rotations, scores every lineup, runs the two backtests, and then
+# pulls the exact numbers and figures the post uses -- in that order, top to
+# bottom, one file.
+#
+# What "self-contained" does and doesn't mean here: every R function this
+# needs is defined below (copied verbatim from tank_functions.R, which is
+# this repo's normal home for them -- the project's own targets pipeline in
+# _targets.R is what stays in sync with that file day to day; this script is
+# a point-in-time flattening of it for the post). It still reads the raw
+# data CSVs already fetched into this folder (fetch_tank_data.py) and the
+# two .stan model specifications (tank_development.stan, tank_rookie.stan)
+# that already live here -- those are inputs, the same way the CSVs are, not
+# application code, so they aren't inlined as string literals.
+#
+# Seeding: _targets.R sets a fresh, independent random seed before each
+# stage (derived from that stage's name plus the pipeline's global seed,
+# 202), not one seed reused continuously top to bottom. A plain sequential
+# set.seed(202) at the top of a flat script drifts from that after the first
+# stage that consumes randomness, and two Stan fits deep in the pipeline
+# (the rookie model, refit inside each backtest on a smaller training
+# window) are numerically sensitive enough that a different draw can fail to
+# converge outright. stage_seed() below reproduces _targets.R's exact
+# per-stage seed (same hash, same global seed), called at each stage
+# boundary below, so this script draws the same random numbers the tracked
+# pipeline does and reproduces its results, not just its method.
+#
+# Runtime: this refits everything from scratch -- the RAPM ratings model
+# over ~470k stints, two Stan fits (development curve, rookie model), and
+# two more full refits for the backtests. Expect on the order of 30-60+
+# minutes depending on the machine, most of it in fit_rapm()'s
+# marginal-likelihood optimization and the four cmdstanr fits. Needs
+# cmdstanr set up and pointed at a working CmdStan install.
 #
 # Session info
 # R version 4.5.3 (2026-03-11) -- "Reassured Reassurer"
@@ -13,14 +49,58 @@ library(janitor)
 library(Matrix)
 library(cmdstanr)
 library(posterior)
+library(secretbase)
 library(ggtext)
 library(ggrepel)
 library(ggbeeswarm)
 library(usaidplot)
 
+# Reproduces _targets.R's tar_option_set(seed = 202) + the per-target seed
+# targets derives from it (targets:::tar_seed_create): shake256 hash of the
+# stage's name and the global seed, truncated to a 32-bit int. Verified
+# against tar_seed_create() directly -- identical output, no targets
+# dependency needed to compute it.
+stage_seed <- function(name, global_seed = 202L) {
+  secretbase::shake256(x = list(as.character(name), as.integer(global_seed)), bits = 32L, convert = NA)
+}
+set_stage <- function(name) set.seed(stage_seed(name))
+
+wiz_blue     <- "#172869FF"
+wiz_red      <- "#D9565CFF"
+teal         <- "#3B9AB2"
+caption_text <- "Data: nba.com/stats\nwizardspoints.substack.com"
+
+save_plot <- function(name, p, height = NULL, width = NULL) {
+  ggsave(name, p, width = width %||% 11, height = height %||% 7, dpi = 300, device = ragg::agg_png)
+}
+
+titles_wrap <- theme(
+  plot.title = ggtext::element_textbox_simple(size = rel(1.15), face = "bold", lineheight = 1.15
+    , margin = margin(b = 26), width = unit(1, "npc"))
+  , plot.subtitle = ggtext::element_textbox_simple(size = rel(0.92), colour = "grey30", lineheight = 1.25
+    , margin = margin(b = 12), width = unit(1, "npc"))
+  , plot.title.position = "plot"
+  , plot.caption.position = "plot"
+  , plot.margin = margin(t = 12, r = 18, b = 10, l = 12)
+)
+
+s1  <- function(x) sprintf("%+.1f", x)
+f1  <- function(x) sprintf("%.1f", x)
+pct <- function(x) sprintf("%.0f%%", 100 * x)
+comma <- function(x) trimws(format(round(x), big.mark = ","))
+and_list <- function(x) if (length(x) < 2) x else paste(paste(head(x, -1), collapse = ", "), "and", tail(x, 1))
+
 
 # =============================================================================
-# Tank or talent? 
+# Functions -- copied verbatim from tank_functions.R (this repo's normal home
+# for them, kept in sync by _targets.R day to day).
+# =============================================================================
+
+# =============================================================================
+# Tank or talent? — functions for the targets pipeline in _targets.R
+#
+# Every stage is a function of its inputs; targets decides what to rerun when
+# code, data or a .stan file changes. Nothing here reads or writes a cache.
 # =============================================================================
 
 WIZARDS_ID <- 1610612764
@@ -2598,9 +2678,56 @@ game_margin_sd <- function(team_rows) {
 }
 
 # =============================================================================
+# Raw data -- fetch if missing
+#
+# Everything below this point is a local computation on files already on
+# disk. Getting those files onto disk in the first place is not: it's
+# thousands of individual requests to cdn.nba.com for per-game box scores and
+# play-by-play, one game at a time, with deliberate rate-limiting and 403
+# backoff, using a spoofed Chrome TLS fingerprint (curl_cffi) because plain
+# header spoofing isn't enough to get past stats.nba.com's bot detection. On
+# a clean run that can take hours, it depends on stats.nba.com/cdn.nba.com
+# staying reachable and not changing what defeats their bot detection, and
+# there's no equivalent of the TLS-fingerprint trick in base R -- so rather
+# than re-implement that scrape in R (unverified, and liable to just get
+# blocked), this step shells out to the project's own fetch script, which is
+# tested and already works. It only runs if a required file is actually
+# missing.
+# =============================================================================
+
+required_files <- c(
+  "tank_games.csv", "tank_player_index.csv", "tank_player_index_2026.csv"
+  , "tank_bio.csv", "tank_team_advanced.csv"
+  , sprintf("tank_pbp_%s.csv.gz", SEASONS)
+  , sprintf("tank_box_%s.csv.gz", SEASONS)
+)
+missing_files <- required_files[!file.exists(required_files)]
+
+if (length(missing_files)) {
+  cat("\n>>> Missing", length(missing_files), "raw data file(s):\n")
+  cat(paste0("    ", missing_files, collapse = "\n"), "\n")
+  cat(">>> Running fetch_tank_data.py to pull them from stats.nba.com / cdn.nba.com.\n")
+  cat(">>> This is a live scrape of thousands of games and can take hours; it resumes\n")
+  cat(">>> from whatever's already cached in raw/, so a second run only fetches what a\n")
+  cat(">>> first run didn't finish.\n\n")
+  py <- Sys.which("python3")
+  if (py == "") stop("python3 not found on PATH -- install it (with pandas and curl_cffi) or fetch the raw data manually with fetch_tank_data.py first.")
+  status <- system2(py, "fetch_tank_data.py")
+  if (status != 0) stop("fetch_tank_data.py exited with status ", status, " -- see its output above. Common causes: cdn.nba.com throttling (rerun -- it resumes) or stats.nba.com changing its bot detection (the script may need updating).")
+  still_missing <- required_files[!file.exists(required_files)]
+  if (length(still_missing)) stop("fetch_tank_data.py finished but these are still missing: ", paste(still_missing, collapse = ", "))
+  cat(">>> Fetch complete.\n")
+} else {
+  cat("\n>>> Raw data already present -- skipping the fetch.\n")
+}
+
+
+# =============================================================================
 # Driver -- the same sequence _targets.R runs, flattened into plain
 # assignments in dependency order (targets topologically sorts the DAG
-# below; this is that sort, done by hand).
+# below; this is that sort, done by hand). set_stage("<name>") before each
+# stage matches that stage's exact target name in _targets.R, so its random
+# draws -- and only its random draws -- match what the tracked pipeline used.
 # =============================================================================
 
 cat("\n>>> Reading raw inputs...\n")
@@ -2620,54 +2747,57 @@ realgm_depth_file <- "tank_realgm_depth_2026.csv"
 dev_stan_file    <- "tank_development.stan"
 rookie_stan_file <- "tank_rookie.stan"
 
-official_roster <- read_bbref_roster(bbref_file)
-player_index    <- read_player_index(player_index_file)
-pg              <- read_player_games(box_files, games_file)
+set_stage("official_roster"); official_roster <- read_bbref_roster(bbref_file)
+set_stage("player_index");    player_index    <- read_player_index(player_index_file)
+set_stage("pg");              pg              <- read_player_games(box_files, games_file)
 
 cat(">>> Building and validating stints...\n")
-stints       <- build_stints(pbp_files, pg)
-stint_checks <- validate_stints(stints, pg)
-team_rows    <- stint_team_rows(stints |> filter(game_id %in% stint_checks$keep), pg)
-poss         <- check_possessions(team_rows, team_adv_file, pg, games_file)
-lottery      <- build_lottery(games_file, SEASONS_ALL)
-dir_rows     <- label_rows(team_rows, lottery)
-margin_sd    <- game_margin_sd(team_rows)
+set_stage("stints");       stints       <- build_stints(pbp_files, pg)
+set_stage("stint_checks"); stint_checks <- validate_stints(stints, pg)
+set_stage("team_rows");    team_rows    <- stint_team_rows(stints |> filter(game_id %in% stint_checks$keep), pg)
+set_stage("poss");         poss         <- check_possessions(team_rows, team_adv_file, pg, games_file)
+set_stage("lottery");      lottery      <- build_lottery(games_file, SEASONS_ALL)
+set_stage("dir_rows");     dir_rows     <- label_rows(team_rows, lottery)
+set_stage("margin_sd");    margin_sd    <- game_margin_sd(team_rows)
 
 cat(">>> Box-score priors and roles...\n")
-box_prior <- build_box_prior(pg, bio_file, player_index)
-roles     <- assign_roles(box_prior, player_index)
+set_stage("box_prior"); box_prior <- build_box_prior(pg, bio_file, player_index)
+set_stage("roles");     roles     <- assign_roles(box_prior, player_index)
 
 cat(">>> Fitting the ratings model (RAPM, empirical-Bayes hyperparameters)...\n")
-rapm         <- fit_rapm(dir_rows, box_prior, SEASONS)
-rapm_summary <- rapm_report(rapm)
+set_stage("rapm");         rapm         <- fit_rapm(dir_rows, box_prior, SEASONS)
+set_stage("rapm_summary"); rapm_summary <- rapm_report(rapm)
 
 cat(">>> Decomposing 2025-26 deployment (needed for the 2026-27 projection's zero point)...\n")
-decomp <- decompose(rapm, pg, dir_rows, lottery, player_index, roles, poss$scale)
+set_stage("decomp"); decomp <- decompose(rapm, pg, dir_rows, lottery, player_index, roles, poss$scale)
 
 cat(">>> Fitting the development curve (Stan)...\n")
-pgd_all   <- player_game_deployment(pg, rapm, lottery, player_index, roles, 250)
-dev_pairs <- build_dev_pairs(rapm, pgd_all)
-development <- fit_development(rapm, dev_pairs, dev_stan_file)
+set_stage("pgd_all");   pgd_all   <- player_game_deployment(pg, rapm, lottery, player_index, roles, 250)
+set_stage("dev_pairs"); dev_pairs <- build_dev_pairs(rapm, pgd_all)
+set_stage("development"); development <- fit_development(rapm, dev_pairs, dev_stan_file)
 
 cat(">>> Fitting the rookie reference class (Stan)...\n")
-rookie <- fit_rookie(rapm, pg, player_index, roles, rookie_stan_file)
+set_stage("rookie"); rookie <- fit_rookie(rapm, pg, player_index, roles, rookie_stan_file)
 
 cat(">>> Building the 2026-27 projection and the two rotations...\n")
+set_stage("projection")
 projection <- project_2026(rapm, decomp, development, rookie, player_index, roles, box_prior
   , roster_file, roster_notes_file, margin_sd, schedule_file, official_roster)
 
 cat(">>> Scoring every five-man lineup...\n")
-lineup_opp <- lineup_opponents(dir_rows, pg, rapm_summary, box_prior, development)
-espn_depth   <- read_depth_chart(espn_depth_file, official_roster$name)
-realgm_depth <- read_depth_chart(realgm_depth_file, official_roster$name)
-lineups <- best_lineups(projection, roles, dir_rows, lineup_opp, espn_depth)
-argmax  <- argmax_draws(projection, lineups)
+set_stage("lineup_opp");    lineup_opp   <- lineup_opponents(dir_rows, pg, rapm_summary, box_prior, development)
+set_stage("espn_depth");    espn_depth   <- read_depth_chart(espn_depth_file, official_roster$name)
+set_stage("realgm_depth");  realgm_depth <- read_depth_chart(realgm_depth_file, official_roster$name)
+set_stage("lineups"); lineups <- best_lineups(projection, roles, dir_rows, lineup_opp, espn_depth)
+set_stage("argmax");  argmax  <- argmax_draws(projection, lineups)
 
-wins_per_point <- fit_wins_per_point(team_adv_file)
+set_stage("wins_per_point"); wins_per_point <- fit_wins_per_point(team_adv_file)
 
 cat(">>> Backtesting on 2024-25 and 2025-26 (two more full refits)...\n")
+set_stage("backtest_2025")
 backtest_2025 <- run_backtest("2025-26", team_rows, pg, games_file, bio_file, player_index, rapm$hyper
   , dev_stan_file, rookie_stan_file, poss$scale)
+set_stage("backtest_2024")
 backtest_2024 <- run_backtest("2024-25", team_rows, pg, games_file, bio_file, player_index, rapm$hyper
   , dev_stan_file, rookie_stan_file, poss$scale)
 
@@ -2803,9 +2933,9 @@ cat("2025-26 -- projected (WAS):", f1(backtest_2025$teams$pred_net[backtest_2025
 cat("(2025-26 is 'last season' as of this post -- projected -11.8 vs actual -11.5.)\n")
 
 cat("\n================ 8. DEPTH CHART CHECK ================\n")
-espn_extra <- setdiff(espn_depth$depth$name, official$name)
-realgm_extra <- setdiff(realgm_depth$depth$name, official$name)
-espn_missing <- setdiff(official$name[official$two_way == 1], espn_depth$depth$name)
+espn_extra <- setdiff(espn_depth$depth$name, official_roster$name)
+realgm_extra <- setdiff(realgm_depth$depth$name, official_roster$name)
+espn_missing <- setdiff(official_roster$name[official_roster$two_way == 1], espn_depth$depth$name)
 cat("On ESPN's chart but not on the official roster:", paste(espn_extra, collapse = ", "), "-- left the team.\n")
 cat("On RealGM's chart but not on the official roster:", paste(realgm_extra, collapse = ", "), "-- on an Exhibit 10 deal, may not make the roster.\n")
 cat("Two-way players ESPN's chart leaves out entirely:", paste(espn_missing, collapse = ", "), "\n")
