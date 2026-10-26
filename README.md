@@ -2,6 +2,8 @@
 
 A repo for random Washington Wizards data explorations related to the [wizardspoints.substack.com](https://wizardspoints.substack.com) newsletter.
 
+**Fool me once, shame on you. Fool me thrice, it’s mf-ing Wizards time!!!!** [post](https://wizardspoints.substack.com/p/fool-me-once-shame-on-you-fool-me), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/wizards_rankings.R)
+
 **I ran 1,000 line up simulations so you don't have to!** [post](https://wizardspoints.substack.com/p/i-ran-1000-wizards-line-up-simulations), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/minutes_2026_post_standalone.R)
 
 **The NBA's K-Shaped Economy** [post](https://wizardspoints.substack.com/p/the-nbas-k-shaped-economy), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/k_shaped_wiz.R), [Stan model](https://github.com/jacobpstein/Wizards-Points/blob/main/k_shaped_persistence.stan) 
