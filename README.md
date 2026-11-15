@@ -2,6 +2,8 @@
 
 A repo for random Washington Wizards data explorations related to the [wizardspoints.substack.com](https://wizardspoints.substack.com) newsletter.
 
+**Trading in the keys to the tank** [post](https://wizardspoints.substack.com/p/trading-in-the-keys-to-the-tank), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/keefe_deepdive.R)
+
 **Fool me once, shame on you. Fool me thrice, it’s mf-ing Wizards time!!!!** [post](https://wizardspoints.substack.com/p/fool-me-once-shame-on-you-fool-me), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/wizards_rankings.R)
 
 **I ran 1,000 line up simulations so you don't have to!** [post](https://wizardspoints.substack.com/p/i-ran-1000-wizards-line-up-simulations), [code](https://github.com/jacobpstein/Wizards-Points/blob/main/minutes_2026_post_standalone.R)
